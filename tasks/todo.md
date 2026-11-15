@@ -2,31 +2,35 @@
 
 ## Status
 
-Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
-`github.com/thheor/temandiabet` (`main`). Next up: Task 3.
+Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
+`github.com/thheor/temandiabet` (`main`). Next up: Task 7.
 
 | Area | What exists | How it was verified |
 | :--- | :--- | :--- |
-| Git | `main` trunk, 6 commits, uploads/`.env`/`dist` ignored | `git check-ignore`, `git ls-files backend/uploads`, clean tree |
+| Git | `main` trunk, uploads/`.env`/`dist` ignored | `git check-ignore`, `git ls-files backend/uploads`, clean tree |
 | Database | `database/database.sql` imported into docker MariaDB 10.4.34, 5 tables | `SHOW TABLES` and a `SELECT COUNT(*) FROM users` through `db()` |
-| PHP core | `config.php` (`BASE_PATH`), `db.php` (`mysqli` + `local.php` override), `cors.php`, `helpers/response.php` | `php -l`; live `OPTIONS` → `204` with echoed origin and credentials; unknown origin gets no `Allow-Origin` |
-| Router | `/temandiabet` prefix under `php -S`, dist assets, SPA fallback, JSON 404 for missing API, `..` guard | live curls: `assets/*.js` → `text/javascript` 258 674 B, `assets/*.css` → `text/css`, missing asset `404`, `/backend/api/nope.php` → `404` JSON, no prefix → `404` |
-| Frontend | Vite 8 + React 19 + TS 7 + Tailwind 4; `VITE_BASE_PATH` → `base`, `BASE_URL` → `basename`; typed models; credentialed client | `tsc -b` clean; builds with `VITE_BASE_PATH=/temandiabet/` and `/` both produced correct asset paths |
+| PHP core | `config.php` (`BASE_PATH`), `db.php` (`mysqli` + `local.php` override), `cors.php`, `helpers/{response,request,auth,upload}.php` | `php -l`; live `OPTIONS` → `204` with echoed origin and credentials; unknown origin gets no `Allow-Origin` |
+| Router | `/temandiabet` prefix under `php -S`, executes PHP and streams static files itself, dist assets, SPA fallback, JSON 404 for missing API, `..` guard | live curls: `assets/*.js` → `text/javascript`, `assets/*.css` → `text/css`, missing asset `404`, `/backend/api/nope.php` → `404` JSON, no prefix → `404` |
+| Auth | `register`, `login`, `me`, `logout`; `require_auth()`; session + 7-day hashed remember token scoped to `/temandiabet` | `scripts/auth-smoke.sh` — 22 checks: 201/409/422/401 paths, `Set-Cookie: path=/temandiabet; HttpOnly; SameSite=Lax`, remember-me restores without the session cookie, logout kills both |
+| Profile | `profile/update.php` (targets, typed fields, avatar), `helpers/upload.php` (finfo MIME, 2 MB cap, random name, old file deleted) | smoke: avatar served over HTTP, replaced file removed, `.txt` and 3 MB uploads rejected, bcrypt `$2y$12$` hash in `users` |
+| Frontend | Vite 8 + React 19 + TS 7 + Tailwind 4; `AuthContext`, `ProtectedRoute`, `Layout`, register/login/profile pages; typed models; credentialed client | `tsc -b` clean; `npm run build` clean with `/temandiabet/` asset paths |
 | Docs | `README.md` run instructions; `.env.example` with php -S, XAMPP and production setups | – |
 
 **Deviations from the original plan**
 
 - Docker MariaDB publishes on **3308**, not 3307 — 3307 is already bound on this machine. `mariadb:10.4` resolves to 10.4.34, matching XAMPP's line.
 - Added `backend/config/local.example.php` plus a gitignored `local.php`: docker's `temandiabet` user and XAMPP's `root`/`3306` cannot share one hardcoded credential set.
-- Added `README.md` (not in the plan tree).
+- Added `README.md` and `scripts/auth-smoke.sh` (neither is in the plan tree).
+- `router.php` executes PHP endpoints with `require` instead of returning `false`: the built-in server resolves the prefixed URI against the docroot, so `return false` 404s every existing file.
 - Toolchain versions come from the current Vite template (Vite 8, React 19, TypeScript 7, Tailwind 4 via `@tailwindcss/vite`, so no `tailwind.config.js`). `strict: true` was added to `tsconfig.app.json`.
-- Tasks 0–2 were committed straight to `main`; foundation work is sequential per the plan.
+- Tasks 0–6 were committed straight to `main`; foundation work is sequential per the plan.
+- UI copy is English, matching the plan's status labels and disclaimer.
 
-**Still open in Tasks 0–2**
+**Still open**
 
 - XAMPP parity — the friend's machine must import the schema and serve from `htdocs/temandiabet/`.
-- Visual check in a browser at `http://localhost:5173/temandiabet/`.
-- `v0.1.0` tag and any `feature/` branches were not created.
+- Browser pass over register → login → profile → logout (the API is covered by the smoke script; no browser was opened).
+- `v0.1.0` / `v0.2.0` tags and any `feature/` branches were not created.
 
 ## Task 0: Initialize git repository, `.gitignore`, and baseline commit
 
@@ -133,15 +137,15 @@ Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `POST /temandiabet/backend/api/auth/register.php` validates input, rejects duplicate emails with HTTP `409`, and inserts hashed passwords into `users`.
-- [ ] `RegisterPage.tsx` collects `full_name`, `email`, `password`, and `diabetes_type` (`type_1`, `type_2`, `prediabetes`, `caregiver`) with inline validation errors.
-- [ ] Successful registration redirects to `/temandiabet/login` with a confirmation message.
+- [x] `POST /temandiabet/backend/api/auth/register.php` validates input, rejects duplicate emails with HTTP `409`, and inserts hashed passwords into `users`.
+- [x] `RegisterPage.tsx` collects `full_name`, `email`, `password`, and `diabetes_type` (`type_1`, `type_2`, `prediabetes`, `caregiver`) with inline validation errors.
+- [ ] Successful registration redirects to `/temandiabet/login` with a confirmation message. *(code + `tsc`; redirect not exercised in a browser)*
 
 **Verification:**
 
-- [ ] Tests pass: `php -l backend/api/auth/register.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Register a user via UI, confirm `password_hash` is a bcrypt hash in `users`, and confirm duplicate email displays an error.
+- [x] Tests pass: `php -l backend/api/auth/register.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Register a user via UI, confirm `password_hash` is a bcrypt hash in `users`, and confirm duplicate email displays an error. *(driven through `scripts/auth-smoke.sh`, not a browser: `201`, duplicate `409`, short password `422`, hash `$2y$12$`)*
 
 **Dependencies:** Task 1, Task 2
 
@@ -161,15 +165,15 @@ Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `login.php` verifies passwords via `password_verify()`, initializes `$_SESSION['user_id']` with `path = BASE_PATH ?: '/'`, `httponly`, `samesite=Lax`, and sets a hashed 7-day `remember_token` cookie when "Remember me" is checked.
-- [ ] `me.php` and `requireAuth()` validate `$_SESSION['user_id']` or auto-login via a valid `remember_token`, returning HTTP `401` otherwise.
-- [ ] `AuthContext` restores user state on reload by calling `/api/auth/me.php` and redirects authenticated users to `/temandiabet/dashboard`.
+- [x] `login.php` verifies passwords via `password_verify()`, initializes `$_SESSION['user_id']` with `path = BASE_PATH ?: '/'`, `httponly`, `samesite=Lax`, and sets a hashed 7-day `remember_token` cookie when "Remember me" is checked.
+- [x] `me.php` and `requireAuth()` validate `$_SESSION['user_id']` or auto-login via a valid `remember_token`, returning HTTP `401` otherwise.
+- [ ] `AuthContext` restores user state on reload by calling `/api/auth/me.php` and redirects authenticated users to `/temandiabet/dashboard`. *(code + `tsc`; reload flow not exercised in a browser)*
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on auth PHP files and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Log in with "Remember me", inspect DevTools Cookies (`Path = /temandiabet` locally, `/` in production, `HttpOnly`), reload page, and verify session persists.
+- [x] Tests pass: `php -l` on auth PHP files and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Log in with "Remember me", inspect DevTools Cookies (`Path = /temandiabet` locally, `/` in production, `HttpOnly`), reload page, and verify session persists. *(verified from the `Set-Cookie` response headers and a session-less cookie jar instead of DevTools)*
 
 **Dependencies:** Task 3
 
@@ -191,15 +195,15 @@ Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `POST /temandiabet/backend/api/auth/logout.php` clears `remember_token` in MySQL, expires `remember_token` and `PHPSESSID` cookies with the same `path` used at login, and destroys the session.
-- [ ] `ProtectedRoute` redirects unauthenticated visitors to `/temandiabet/login` and shows a loading indicator during initial session check.
-- [ ] Clicking Logout clears frontend auth state and blocks back/reload access to protected pages.
+- [x] `POST /temandiabet/backend/api/auth/logout.php` clears `remember_token` in MySQL, expires `remember_token` and `PHPSESSID` cookies with the same `path` used at login, and destroys the session.
+- [ ] `ProtectedRoute` redirects unauthenticated visitors to `/temandiabet/login` and shows a loading indicator during initial session check. *(code + `tsc`; not exercised in a browser)*
+- [ ] Clicking Logout clears frontend auth state and blocks back/reload access to protected pages. *(API side verified: `401` after logout and the remember cookie is dead; the click itself not exercised)*
 
 **Verification:**
 
-- [ ] Tests pass: `php -l backend/api/auth/logout.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Access `/temandiabet/dashboard` logged out (redirects to login); log in, click Logout, and confirm cookies are expired.
+- [x] Tests pass: `php -l backend/api/auth/logout.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Access `/temandiabet/dashboard` logged out (redirects to login); log in, click Logout, and confirm cookies are expired. *(cookie expiry and `401` confirmed through the smoke script)*
 
 **Dependencies:** Task 4
 
@@ -219,15 +223,15 @@ Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `backend/helpers/upload.php` accepts only `jpg`, `png`, and `webp` up to 2 MB, saves files under `backend/uploads/avatars/`, and returns a portable relative path (`uploads/avatars/...`).
-- [ ] `POST /temandiabet/backend/api/profile/update.php` updates `full_name`, `diabetes_type`, `target_glucose_min`, `target_glucose_max`, and `avatar_path` for `$_SESSION['user_id']`; targets remain patient-editable because they are physician-prescribed, not app-computed.
-- [ ] `ProfilePage.tsx` allows editing profile fields, previewing/uploading an avatar, and displaying it via `${VITE_API_BASE_URL}/${user.avatar_path}`.
+- [x] `backend/helpers/upload.php` accepts only `jpg`, `png`, and `webp` up to 2 MB, saves files under `backend/uploads/avatars/`, and returns a portable relative path (`uploads/avatars/...`).
+- [x] `POST /temandiabet/backend/api/profile/update.php` updates `full_name`, `diabetes_type`, `target_glucose_min`, `target_glucose_max`, and `avatar_path` for `$_SESSION['user_id']`; targets remain patient-editable because they are physician-prescribed, not app-computed.
+- [ ] `ProfilePage.tsx` allows editing profile fields, previewing/uploading an avatar, and displaying it via `${VITE_API_BASE_URL}/${user.avatar_path}`. *(code + `tsc`; page not opened in a browser, though the avatar URL itself returns `200`)*
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on `upload.php` and `update.php`, and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Upload a valid PNG (< 2 MB) and verify it loads on both `php -S` and XAMPP; reject a `.txt` or > 2 MB file with HTTP `400`.
+- [x] Tests pass: `php -l` on `upload.php` and `update.php`, and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Upload a valid PNG (< 2 MB) and verify it loads on both `php -S` and XAMPP; reject a `.txt` or > 2 MB file with HTTP `400`. *(php -S verified — avatar `200`, `.txt` `400`, 3 MB `400`, replaced file deleted; XAMPP leg pending)*
 
 **Dependencies:** Task 4, Task 5
 
@@ -243,8 +247,8 @@ Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
 
 ## Checkpoint: After Tasks 3–6 (Authentication & Profile)
 
-- [ ] All lint, TypeScript, and Vite build checks pass
-- [ ] Register -> Login (Session + Remember Me) -> Profile/Avatar Upload -> Logout verified end-to-end
+- [x] All lint, TypeScript, and Vite build checks pass
+- [x] Register -> Login (Session + Remember Me) -> Profile/Avatar Upload -> Logout verified end-to-end *(through `scripts/auth-smoke.sh`: 22 checks, no browser)*
 - [ ] Team review before splitting into parallel Phase 3 feature branches
 - [ ] Merged to `main` via `feature/tN-...` branches; tag `v0.2.0` created
 
