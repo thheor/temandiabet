@@ -1,20 +1,48 @@
 # Task List: Teman Diabet MVP (`/temandiabet`)
 
+## Status
+
+Updated 2026-11-15. Tasks 0–2 are implemented, verified, and pushed to
+`github.com/thheor/temandiabet` (`main`). Next up: Task 3.
+
+| Area | What exists | How it was verified |
+| :--- | :--- | :--- |
+| Git | `main` trunk, 6 commits, uploads/`.env`/`dist` ignored | `git check-ignore`, `git ls-files backend/uploads`, clean tree |
+| Database | `database/database.sql` imported into docker MariaDB 10.4.34, 5 tables | `SHOW TABLES` and a `SELECT COUNT(*) FROM users` through `db()` |
+| PHP core | `config.php` (`BASE_PATH`), `db.php` (`mysqli` + `local.php` override), `cors.php`, `helpers/response.php` | `php -l`; live `OPTIONS` → `204` with echoed origin and credentials; unknown origin gets no `Allow-Origin` |
+| Router | `/temandiabet` prefix under `php -S`, dist assets, SPA fallback, JSON 404 for missing API, `..` guard | live curls: `assets/*.js` → `text/javascript` 258 674 B, `assets/*.css` → `text/css`, missing asset `404`, `/backend/api/nope.php` → `404` JSON, no prefix → `404` |
+| Frontend | Vite 8 + React 19 + TS 7 + Tailwind 4; `VITE_BASE_PATH` → `base`, `BASE_URL` → `basename`; typed models; credentialed client | `tsc -b` clean; builds with `VITE_BASE_PATH=/temandiabet/` and `/` both produced correct asset paths |
+| Docs | `README.md` run instructions; `.env.example` with php -S, XAMPP and production setups | – |
+
+**Deviations from the original plan**
+
+- Docker MariaDB publishes on **3308**, not 3307 — 3307 is already bound on this machine. `mariadb:10.4` resolves to 10.4.34, matching XAMPP's line.
+- Added `backend/config/local.example.php` plus a gitignored `local.php`: docker's `temandiabet` user and XAMPP's `root`/`3306` cannot share one hardcoded credential set.
+- Added `README.md` (not in the plan tree).
+- Toolchain versions come from the current Vite template (Vite 8, React 19, TypeScript 7, Tailwind 4 via `@tailwindcss/vite`, so no `tailwind.config.js`). `strict: true` was added to `tsconfig.app.json`.
+- Tasks 0–2 were committed straight to `main`; foundation work is sequential per the plan.
+
+**Still open in Tasks 0–2**
+
+- XAMPP parity — the friend's machine must import the schema and serve from `htdocs/temandiabet/`.
+- Visual check in a browser at `http://localhost:5173/temandiabet/`.
+- `v0.1.0` tag and any `feature/` branches were not created.
+
 ## Task 0: Initialize git repository, `.gitignore`, and baseline commit
 
 **Description:** Create the repository with `main` as the trunk, add a `.gitignore` covering dependencies, build output, local env files, and uploaded test images (while keeping `backend/uploads/**/.gitkeep`), and commit the plan, task list, and schema as the baseline.
 
 **Acceptance criteria:**
 
-- [ ] `git init -b main` creates a repo whose trunk is `main`; short-lived branches are named `feature/tN-<slug>` and merged with a plain `git merge`.
-- [ ] `.gitignore` excludes `node_modules/`, `frontend/dist/`, `frontend/.env`, `*.log`, `.DS_Store`, and all files under `backend/uploads/` except the `.gitkeep` placeholders.
-- [ ] Baseline commit exists for `tasks/`, `database/`, and `.gitignore`.
+- [x] `git init -b main` creates a repo whose trunk is `main`; short-lived branches are named `feature/tN-<slug>` and merged with a plain `git merge`.
+- [x] `.gitignore` excludes `node_modules/`, `frontend/dist/`, `frontend/.env`, `*.log`, `.DS_Store`, and all files under `backend/uploads/` except the `.gitkeep` placeholders.
+- [x] Baseline commit exists for `tasks/`, `database/`, and `.gitignore`.
 
 **Verification:**
 
-- [ ] Tests pass: `git check-ignore -v frontend/.env backend/uploads/avatars/test.png` reports both ignored, while `git ls-files backend/uploads` shows only `.gitkeep` files.
-- [ ] Build succeeds: `git status` is clean on `main`.
-- [ ] Manual check: `git log --oneline` shows one `chore:` baseline commit.
+- [x] Tests pass: `git check-ignore -v frontend/.env backend/uploads/avatars/test.png` reports both ignored, while `git ls-files backend/uploads` shows only `.gitkeep` files.
+- [x] Build succeeds: `git status` is clean on `main`.
+- [x] Manual check: `git log --oneline` shows one `chore:` baseline commit.
 
 **Dependencies:** None
 
@@ -32,16 +60,16 @@
 
 **Acceptance criteria:**
 
-- [ ] `database/database.sql` creates `users`, `blood_glucose_records`, `food_logs`, `medication_schedules`, and `inner_circles` in database `temandiabet` with exact keys and cascading FKs.
-- [ ] `backend/config/config.php` defines `BASE_PATH` (`/temandiabet` locally, `''` in production) consumed by cookie-scope code.
-- [ ] `backend/config/db.php` and `cors.php` connect via `mysqli` (`utf8mb4`), handle `OPTIONS` preflight (`204`), and echo allowed local origins (plus the production origin) with `Access-Control-Allow-Credentials: true`.
-- [ ] Running `php -S localhost:8000 router.php` serves `/temandiabet/backend/...` identically to Apache XAMPP at `http://localhost/temandiabet/backend/...`; `router.php` strips the `/temandiabet` prefix.
+- [x] `database/database.sql` creates `users`, `blood_glucose_records`, `food_logs`, `medication_schedules`, and `inner_circles` in database `temandiabet` with exact keys and cascading FKs.
+- [x] `backend/config/config.php` defines `BASE_PATH` (`/temandiabet` locally, `''` in production) consumed by cookie-scope code.
+- [x] `backend/config/db.php` and `cors.php` connect via `mysqli` (`utf8mb4`), handle `OPTIONS` preflight (`204`), and echo allowed local origins (plus the production origin) with `Access-Control-Allow-Credentials: true`.
+- [ ] Running `php -S localhost:8000 router.php` serves `/temandiabet/backend/...` identically to Apache XAMPP at `http://localhost/temandiabet/backend/...`; `router.php` strips the `/temandiabet` prefix. *(php -S side verified; XAMPP pending)*
 
 **Verification:**
 
-- [ ] Tests pass: Import `database/database.sql` into MySQL and run `php -l` across `router.php` and `backend/**/*.php`.
-- [ ] Build succeeds: `curl -i -X OPTIONS http://localhost:8000/temandiabet/backend/api/auth/me.php` (and XAMPP `http://localhost/temandiabet/...`) returns `204` with CORS headers.
-- [ ] Manual check: Confirm all 5 tables exist via `SHOW TABLES`.
+- [x] Tests pass: Import `database/database.sql` into MySQL and run `php -l` across `router.php` and `backend/**/*.php`.
+- [x] Build succeeds: `curl -i -X OPTIONS http://localhost:8000/temandiabet/backend/api/auth/me.php` (and XAMPP `http://localhost/temandiabet/...`) returns `204` with CORS headers. *(verified against a temporary probe endpoint — `me.php` arrives in Task 4; XAMPP leg pending)*
+- [x] Manual check: Confirm all 5 tables exist via `SHOW TABLES`.
 
 **Dependencies:** Task 0
 
@@ -50,6 +78,7 @@
 - `database/database.sql`
 - `backend/config/config.php`
 - `backend/config/db.php`
+- `backend/config/local.example.php`
 - `backend/config/cors.php`
 - `backend/helpers/response.php`
 - `router.php`
@@ -64,15 +93,15 @@
 
 **Acceptance criteria:**
 
-- [ ] `frontend/vite.config.ts` reads `VITE_BASE_PATH` via `loadEnv` and uses it as `base` (default `/temandiabet/`); Tailwind CSS renders utility styles properly.
-- [ ] `frontend/.env.example` documents `VITE_BASE_PATH=/temandiabet/` + `VITE_API_BASE_URL` for XAMPP (`http://localhost/temandiabet/backend`) and `php -S` (`http://localhost:8000/temandiabet/backend`), and the production pair `VITE_BASE_PATH=/` + `VITE_API_BASE_URL=https://<domain>/backend` (no prefix).
-- [ ] `App.tsx` sets `basename={import.meta.env.BASE_URL.replace(/\/$/, '')}` so dev resolves `/temandiabet` and production resolves `/`.
-- [ ] `src/types/index.ts` and `src/lib/api.ts` define typed payloads and send `credentials: 'include'` on all API calls.
+- [x] `frontend/vite.config.ts` reads `VITE_BASE_PATH` via `loadEnv` and uses it as `base` (default `/temandiabet/`); Tailwind CSS renders utility styles properly.
+- [x] `frontend/.env.example` documents `VITE_BASE_PATH=/temandiabet/` + `VITE_API_BASE_URL` for XAMPP (`http://localhost/temandiabet/backend`) and `php -S` (`http://localhost:8000/temandiabet/backend`), and the production pair `VITE_BASE_PATH=/` + `VITE_API_BASE_URL=https://<domain>/backend` (no prefix).
+- [x] `App.tsx` sets `basename={import.meta.env.BASE_URL.replace(/\/$/, '')}` so dev resolves `/temandiabet` and production resolves `/`.
+- [x] `src/types/index.ts` and `src/lib/api.ts` define typed payloads and send `credentials: 'include'` on all API calls.
 
 **Verification:**
 
-- [ ] Tests pass: `npx tsc --noEmit` passes with zero errors.
-- [ ] Build succeeds: `npm run build` produces `dist/` with `/temandiabet/` asset paths; a second build with `VITE_BASE_PATH=/` produces root-relative paths.
+- [x] Tests pass: `npx tsc --noEmit` passes with zero errors. *(run as `tsc -b`, the repo's build script)*
+- [x] Build succeeds: `npm run build` produces `dist/` with `/temandiabet/` asset paths; a second build with `VITE_BASE_PATH=/` produces root-relative paths.
 - [ ] Manual check: Open `http://localhost:5173/temandiabet/` in browser and verify page renders with Tailwind styles.
 
 **Dependencies:** Task 0 (can run in parallel with Task 1)
@@ -91,7 +120,7 @@
 
 ## Checkpoint: After Tasks 1–2 (Foundation)
 
-- [ ] Schema imported in MySQL; `php -l` and `npm run build` pass
+- [x] Schema imported in MySQL; `php -l` and `npm run build` pass
 - [ ] Both `php -S localhost:8000 router.php` and XAMPP resolve `/temandiabet/backend/` identically
 - [ ] Team members verify `.env` points to their local backend URL
 - [ ] Merged to `main` via `feature/tN-...` branches; tag `v0.1.0` created
