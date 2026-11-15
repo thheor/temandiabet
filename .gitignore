@@ -1,0 +1,10 @@
+node_modules/
+frontend/dist/
+frontend/.env
+*.log
+.DS_Store
+
+# Uploaded media is never committed; keep the folders and their placeholders.
+backend/uploads/**
+!backend/uploads/**/
+!backend/uploads/**/.gitkeep
