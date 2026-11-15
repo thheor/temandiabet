@@ -30,6 +30,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T
 }
 
+// Uploaded files are stored as portable relative paths (uploads/...).
+export function mediaUrl(path: string): string {
+  return `${API_BASE_URL}/${path}`
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
