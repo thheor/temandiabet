@@ -1,4 +1,12 @@
 export type DiabetesType = 'type_1' | 'type_2' | 'prediabetes' | 'caregiver'
+
+export const DIABETES_TYPE_OPTIONS: { value: DiabetesType; label: string }[] = [
+  { value: 'type_1', label: 'Type 1 diabetes' },
+  { value: 'type_2', label: 'Type 2 diabetes' },
+  { value: 'prediabetes', label: 'Prediabetes' },
+  { value: 'caregiver', label: 'Family member / caregiver' },
+]
+
 export type MeasurementTiming = 'fasting' | 'random' | 'post_meal'
 export type StatusCategory = 'hypoglycemia' | 'normal' | 'elevated' | 'high'
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack'
