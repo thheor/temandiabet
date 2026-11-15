@@ -1,6 +1,7 @@
 node_modules/
 frontend/dist/
 frontend/.env
+backend/config/local.php
 *.log
 .DS_Store
 
