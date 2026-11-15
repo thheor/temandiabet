@@ -17,8 +17,7 @@ docker compose down -v        # wipe and re-import
 
 XAMPP: import `database/database.sql` in phpMyAdmin, then copy
 `backend/config/local.example.php` to `backend/config/local.php` (gitignored, already points at
-`127.0.0.1:3306` with `root` / empty password). If `php` itself runs inside a container (lerd,
-podman, docker), use `'host' => 'host.containers.internal'` there instead of `127.0.0.1`.
+`127.0.0.1:3306` with `root` / empty password).
 
 ## Backend
 
