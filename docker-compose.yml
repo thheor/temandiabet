@@ -1,0 +1,29 @@
+# Docker MariaDB pinned to the same 10.4 line XAMPP 8.x ships, so the schema and
+# queries behave identically for both teammates. XAMPP users ignore this file.
+services:
+  db:
+    image: mariadb:10.4
+    container_name: temandiabet-db
+    restart: unless-stopped
+    ports:
+      - "3308:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: temandiabet
+      MARIADB_USER: temandiabet
+      MARIADB_PASSWORD: temandiabet
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db-data:/var/lib/mysql
+      # Runs only on a fresh volume; `docker compose down -v` to re-import.
+      - ./database/database.sql:/docker-entrypoint-initdb.d/01-database.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:
