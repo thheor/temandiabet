@@ -2,9 +2,9 @@
 
 ## Status
 
-Updated 2026-11-16. Tasks 0–6 are implemented, verified, and pushed to
+Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 `github.com/thheor/temandiabet` (`main`), tagged `v0.1.0` (foundation) and
-`v0.2.0` (auth + profile). Next up: Task 7.
+`v0.2.0` (auth + profile). Next up: Task 8.
 
 | Area | What exists | How it was verified |
 | :--- | :--- | :--- |
@@ -15,6 +15,7 @@ Updated 2026-11-16. Tasks 0–6 are implemented, verified, and pushed to
 | Auth | `register`, `login`, `me`, `logout`; `require_auth()`; session + 7-day hashed remember token scoped to `/temandiabet` | `scripts/auth-smoke.sh` — 22 checks: 201/409/422/401 paths, `Set-Cookie: path=/temandiabet; HttpOnly; SameSite=Lax`, remember-me restores without the session cookie, logout kills both |
 | Profile | `profile/update.php` (targets, typed fields, avatar), `helpers/upload.php` (finfo MIME, 2 MB cap, random name, old file deleted) | smoke: avatar served over HTTP, replaced file removed, `.txt` and 3 MB uploads rejected, bcrypt `$2y$12$` hash in `users` |
 | Frontend | Vite 8 + React 19 + TS 7 + Tailwind 4; `AuthContext`, `ProtectedRoute`, `Layout`, register/login/profile pages; typed models; credentialed client | `tsc -b` clean; `npm run build` clean with `/temandiabet/` asset paths |
+| Blood glucose | `helpers/glucose.php` (`classifyGlucose`, the only thresholds), `blood-glucose/{create,index}.php`, `GlucoseForm`, `BloodGlucosePage`, `/glucose` route + nav link | `scripts/glucose-smoke.sh` — 38 checks over every timing boundary, validation and per-user isolation; headless Chromium — 14 checks, screenshot inspected; DB rows show the stored `status_category` |
 | Browser | register → login → dashboard → profile/avatar → logout in a real engine | headless Chromium (Google Chrome for Testing 156) over CDP: 22 checks, screenshot inspected, Tailwind computed styles applied |
 | XAMPP layout | docroot with a `temandiabet` symlink and no `router.php` — the path resolution Apache uses | `scripts/auth-smoke.sh` 22/22 and `OPTIONS` `204` against a docroot-only server; real XAMPP not installed here |
 
@@ -29,6 +30,8 @@ Updated 2026-11-16. Tasks 0–6 are implemented, verified, and pushed to
 - UI copy is English, matching the plan's status labels and disclaimer.
 - Default local setup is one server (`http://localhost:5173/temandiabet/`) with a relative `VITE_API_BASE_URL=/temandiabet/backend`; the two-server Vite dev setup stays documented but commented out in `.env.example`.
 - `LoginPage` redirects an already signed-in visitor to `/dashboard` (Task 4 acceptance) — added while closing this pass.
+- `frontend/src/lib/clinical.ts` exists early with timing labels and status colours only (the plan lists it under Task 11); `DISCLAIMER` and the 54/250 display thresholds still land in Task 11. Thresholds stay exclusively in `classifyGlucose()`.
+- Glucose readings are stamped `measured_at = NOW()` unless the request sends one; the form does not expose a backdating field yet.
 
 **Still open (team-side only)**
 
@@ -266,16 +269,16 @@ Updated 2026-11-16. Tasks 0–6 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `POST /temandiabet/backend/api/blood-glucose/create.php` validates `glucose_mg_dl > 0` and a required `measurement_timing`, assigns `status_category` server-side via `classifyGlucose()`, and inserts for `$_SESSION['user_id']`.
-- [ ] Classification matches the guideline exactly: `< 70` → `hypoglycemia`; `fasting` 70–130 `normal`, 131–179 `elevated`, `>= 180` `high`; `post_meal` 70–179 `normal`, 180–249 `elevated`, `>= 250` `high`; `random` 70–179 `normal`, 180–199 `elevated`, `>= 200` `high`.
-- [ ] `GET /temandiabet/backend/api/blood-glucose/index.php?range=7d|30d` returns filtered records and summary stats (`avg`, `min`, `max`).
-- [ ] `BloodGlucosePage.tsx` renders `GlucoseForm`, a `7d`/`30d` range filter, and color-coded status badges labelled `Normal` / `Elevated` / `High` / `Hypoglycemia` — never a diagnosis.
+- [x] `POST /temandiabet/backend/api/blood-glucose/create.php` validates `glucose_mg_dl > 0` and a required `measurement_timing`, assigns `status_category` server-side via `classifyGlucose()`, and inserts for `$_SESSION['user_id']`.
+- [x] Classification matches the guideline exactly: `< 70` → `hypoglycemia`; `fasting` 70–130 `normal`, 131–179 `elevated`, `>= 180` `high`; `post_meal` 70–179 `normal`, 180–249 `elevated`, `>= 250` `high`; `random` 70–179 `normal`, 180–199 `elevated`, `>= 200` `high`.
+- [x] `GET /temandiabet/backend/api/blood-glucose/index.php?range=7d|30d` returns filtered records and summary stats (`avg`, `min`, `max`).
+- [x] `BloodGlucosePage.tsx` renders `GlucoseForm`, a `7d`/`30d` range filter, and color-coded status badges labelled `Normal` / `Elevated` / `High` / `Hypoglycemia` — never a diagnosis.
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on `create.php`/`index.php`/`glucose.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Submit `65`, `110 (fasting)`, `165 (fasting)`, and `230 (fasting)` and confirm persisted `status_category` values are `hypoglycemia`, `normal`, `elevated`, `high`; submit `200 (post_meal)` → `elevated` and `200 (random)` → `high`.
+- [x] Tests pass: `php -l` on `create.php`/`index.php`/`glucose.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Submit `65`, `110 (fasting)`, `165 (fasting)`, and `230 (fasting)` and confirm persisted `status_category` values are `hypoglycemia`, `normal`, `elevated`, `high`; submit `200 (post_meal)` → `elevated` and `200 (random)` → `high`. *(`scripts/glucose-smoke.sh` posts every boundary — 65/69/70/130/131/179/180 for fasting, 179/180/249/250 post_meal, 179/180/199/200 random — plus the four requested values, then reads the stored categories back through `index.php`: 2 hypoglycemia, 6 normal, 8 elevated, 4 high. Headless Chromium confirmed the badges render with four distinct colours and the summary reads 4 / 140 / 65 / 220 mg/dL.)*
 
 **Dependencies:** Task 5
 
