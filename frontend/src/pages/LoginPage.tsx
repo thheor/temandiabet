@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/api'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { user, loading, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const registered = Boolean((location.state as { registered?: boolean } | null)?.registered)
@@ -15,6 +15,15 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  if (loading) {
+    return <p className="grid min-h-screen place-items-center text-sm text-slate-500">Loading…</p>
+  }
+
+  // An already signed-in visitor has no reason to see the login form.
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
