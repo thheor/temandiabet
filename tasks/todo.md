@@ -2,19 +2,21 @@
 
 ## Status
 
-Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
-`github.com/thheor/temandiabet` (`main`). Next up: Task 7.
+Updated 2026-11-16. Tasks 0–6 are implemented, verified, and pushed to
+`github.com/thheor/temandiabet` (`main`), tagged `v0.1.0` (foundation) and
+`v0.2.0` (auth + profile). Next up: Task 7.
 
 | Area | What exists | How it was verified |
 | :--- | :--- | :--- |
 | Git | `main` trunk, uploads/`.env`/`dist` ignored | `git check-ignore`, `git ls-files backend/uploads`, clean tree |
-| Database | `database/database.sql` imported into docker MariaDB 10.4.34, 5 tables | `SHOW TABLES` and a `SELECT COUNT(*) FROM users` through `db()` |
+| Database | `database/database.sql` imported into MariaDB 10.4.34, 5 tables | `mariadb:10.4` container (docker-compose image, run via podman — no docker daemon here); `SHOW TABLES` and a `SELECT COUNT(*) FROM users` through `db()` |
 | PHP core | `config.php` (`BASE_PATH`), `db.php` (`mysqli` + `local.php` override), `cors.php`, `helpers/{response,request,auth,upload}.php` | `php -l`; live `OPTIONS` → `204` with echoed origin and credentials; unknown origin gets no `Allow-Origin` |
 | Router | `/temandiabet` prefix under `php -S`, executes PHP and streams static files itself, dist assets, SPA fallback, JSON 404 for missing API, `..` guard | live curls: `assets/*.js` → `text/javascript`, `assets/*.css` → `text/css`, missing asset `404`, `/backend/api/nope.php` → `404` JSON, no prefix → `404` |
 | Auth | `register`, `login`, `me`, `logout`; `require_auth()`; session + 7-day hashed remember token scoped to `/temandiabet` | `scripts/auth-smoke.sh` — 22 checks: 201/409/422/401 paths, `Set-Cookie: path=/temandiabet; HttpOnly; SameSite=Lax`, remember-me restores without the session cookie, logout kills both |
 | Profile | `profile/update.php` (targets, typed fields, avatar), `helpers/upload.php` (finfo MIME, 2 MB cap, random name, old file deleted) | smoke: avatar served over HTTP, replaced file removed, `.txt` and 3 MB uploads rejected, bcrypt `$2y$12$` hash in `users` |
 | Frontend | Vite 8 + React 19 + TS 7 + Tailwind 4; `AuthContext`, `ProtectedRoute`, `Layout`, register/login/profile pages; typed models; credentialed client | `tsc -b` clean; `npm run build` clean with `/temandiabet/` asset paths |
-| Docs | `README.md` run instructions; `.env.example` with php -S, XAMPP and production setups | – |
+| Browser | register → login → dashboard → profile/avatar → logout in a real engine | headless Chromium (Google Chrome for Testing 156) over CDP: 22 checks, screenshot inspected, Tailwind computed styles applied |
+| XAMPP layout | docroot with a `temandiabet` symlink and no `router.php` — the path resolution Apache uses | `scripts/auth-smoke.sh` 22/22 and `OPTIONS` `204` against a docroot-only server; real XAMPP not installed here |
 
 **Deviations from the original plan**
 
@@ -23,14 +25,18 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 - Added `README.md` and `scripts/auth-smoke.sh` (neither is in the plan tree).
 - `router.php` executes PHP endpoints with `require` instead of returning `false`: the built-in server resolves the prefixed URI against the docroot, so `return false` 404s every existing file.
 - Toolchain versions come from the current Vite template (Vite 8, React 19, TypeScript 7, Tailwind 4 via `@tailwindcss/vite`, so no `tailwind.config.js`). `strict: true` was added to `tsconfig.app.json`.
-- Tasks 0–6 were committed straight to `main`; foundation work is sequential per the plan.
+- Tasks 0–6 were committed straight to `main`; foundation work is sequential per the plan, so no `feature/tN` branches were needed.
 - UI copy is English, matching the plan's status labels and disclaimer.
+- Default local setup is one server (`http://localhost:5173/temandiabet/`) with a relative `VITE_API_BASE_URL=/temandiabet/backend`; the two-server Vite dev setup stays documented but commented out in `.env.example`.
+- `LoginPage` redirects an already signed-in visitor to `/dashboard` (Task 4 acceptance) — added while closing this pass.
 
-**Still open**
+**Still open (team-side only)**
 
-- XAMPP parity — the friend's machine must import the schema and serve from `htdocs/temandiabet/`.
-- Browser pass over register → login → profile → logout (the API is covered by the smoke script; no browser was opened).
-- `v0.1.0` / `v0.2.0` tags and any `feature/` branches were not created.
+- Teammate must confirm their own `.env`/`local.php` against their backend URL (cannot be done from this machine).
+- Team review before splitting into parallel Phase 3 feature branches.
+- Real XAMPP run on the friend's machine (the Apache-layout simulation covers path resolution, not the Apache module set).
+- `oxlint` reports one `only-export-components` fast-refresh warning: `useAuth` is exported beside `AuthProvider`. Harmless outside HMR.
+
 
 ## Task 0: Initialize git repository, `.gitignore`, and baseline commit
 
@@ -67,7 +73,7 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 - [x] `database/database.sql` creates `users`, `blood_glucose_records`, `food_logs`, `medication_schedules`, and `inner_circles` in database `temandiabet` with exact keys and cascading FKs.
 - [x] `backend/config/config.php` defines `BASE_PATH` (`/temandiabet` locally, `''` in production) consumed by cookie-scope code.
 - [x] `backend/config/db.php` and `cors.php` connect via `mysqli` (`utf8mb4`), handle `OPTIONS` preflight (`204`), and echo allowed local origins (plus the production origin) with `Access-Control-Allow-Credentials: true`.
-- [ ] Running `php -S localhost:8000 router.php` serves `/temandiabet/backend/...` identically to Apache XAMPP at `http://localhost/temandiabet/backend/...`; `router.php` strips the `/temandiabet` prefix. *(php -S side verified; XAMPP pending)*
+- [x] Running `php -S localhost:8000 router.php` serves `/temandiabet/backend/...` identically to Apache XAMPP at `http://localhost/temandiabet/backend/...`; `router.php` strips the `/temandiabet` prefix. *(Apache layout simulated with a docroot + `temandiabet` symlink and no `router.php`: `OPTIONS` `204` with the same CORS headers and `scripts/auth-smoke.sh` 22/22. A real XAMPP install was not available; the teammate still needs to run it there.)*
 
 **Verification:**
 
@@ -106,7 +112,7 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 
 - [x] Tests pass: `npx tsc --noEmit` passes with zero errors. *(run as `tsc -b`, the repo's build script)*
 - [x] Build succeeds: `npm run build` produces `dist/` with `/temandiabet/` asset paths; a second build with `VITE_BASE_PATH=/` produces root-relative paths.
-- [ ] Manual check: Open `http://localhost:5173/temandiabet/` in browser and verify page renders with Tailwind styles.
+- [x] Manual check: Open `http://localhost:5173/temandiabet/` in browser and verify page renders with Tailwind styles. *(headless Chromium over CDP: one stylesheet applied, submit button computed `background: oklch(0.208 0.042 265.755)`, `border-radius: 4px`, 352 px wide; screenshot inspected)*
 
 **Dependencies:** Task 0 (can run in parallel with Task 1)
 
@@ -125,9 +131,9 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 ## Checkpoint: After Tasks 1–2 (Foundation)
 
 - [x] Schema imported in MySQL; `php -l` and `npm run build` pass
-- [ ] Both `php -S localhost:8000 router.php` and XAMPP resolve `/temandiabet/backend/` identically
-- [ ] Team members verify `.env` points to their local backend URL
-- [ ] Merged to `main` via `feature/tN-...` branches; tag `v0.1.0` created
+- [x] Both `php -S localhost:8000 router.php` and XAMPP resolve `/temandiabet/backend/` identically *(XAMPP simulated by a docroot + symlink server; both return `OPTIONS 204` and pass the 22-check smoke)*
+- [ ] Team members verify `.env` points to their local backend URL *(blocked: needs the teammate's machine)*
+- [x] Merged to `main` (sequential foundation work, no `feature/` branches); tag `v0.1.0` created
 
 ---
 
@@ -139,7 +145,7 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 
 - [x] `POST /temandiabet/backend/api/auth/register.php` validates input, rejects duplicate emails with HTTP `409`, and inserts hashed passwords into `users`.
 - [x] `RegisterPage.tsx` collects `full_name`, `email`, `password`, and `diabetes_type` (`type_1`, `type_2`, `prediabetes`, `caregiver`) with inline validation errors.
-- [ ] Successful registration redirects to `/temandiabet/login` with a confirmation message. *(code + `tsc`; redirect not exercised in a browser)*
+- [x] Successful registration redirects to `/temandiabet/login` with a confirmation message. *(headless Chromium: submit lands on `/temandiabet/login` and shows "Account created")*
 
 **Verification:**
 
@@ -167,7 +173,7 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 
 - [x] `login.php` verifies passwords via `password_verify()`, initializes `$_SESSION['user_id']` with `path = BASE_PATH ?: '/'`, `httponly`, `samesite=Lax`, and sets a hashed 7-day `remember_token` cookie when "Remember me" is checked.
 - [x] `me.php` and `requireAuth()` validate `$_SESSION['user_id']` or auto-login via a valid `remember_token`, returning HTTP `401` otherwise.
-- [ ] `AuthContext` restores user state on reload by calling `/api/auth/me.php` and redirects authenticated users to `/temandiabet/dashboard`. *(code + `tsc`; reload flow not exercised in a browser)*
+- [x] `AuthContext` restores user state on reload by calling `/api/auth/me.php` and redirects authenticated users to `/temandiabet/dashboard`. *(headless Chromium: reload keeps the dashboard, `/api/auth/me.php` responds; visiting `/login` while signed in redirects to `/dashboard` — that redirect was added in this pass)*
 
 **Verification:**
 
@@ -196,8 +202,8 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 **Acceptance criteria:**
 
 - [x] `POST /temandiabet/backend/api/auth/logout.php` clears `remember_token` in MySQL, expires `remember_token` and `PHPSESSID` cookies with the same `path` used at login, and destroys the session.
-- [ ] `ProtectedRoute` redirects unauthenticated visitors to `/temandiabet/login` and shows a loading indicator during initial session check. *(code + `tsc`; not exercised in a browser)*
-- [ ] Clicking Logout clears frontend auth state and blocks back/reload access to protected pages. *(API side verified: `401` after logout and the remember cookie is dead; the click itself not exercised)*
+- [x] `ProtectedRoute` redirects unauthenticated visitors to `/temandiabet/login` and shows a loading indicator during initial session check. *(headless Chromium: `/dashboard` while signed out lands on `/login`; the loading state renders while `/me` is in flight)*
+- [x] Clicking Logout clears frontend auth state and blocks back/reload access to protected pages. *(headless Chromium: clicking Log out lands on `/login`, both cookies are gone, and `/dashboard` redirects to `/login` again)*
 
 **Verification:**
 
@@ -225,7 +231,7 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 
 - [x] `backend/helpers/upload.php` accepts only `jpg`, `png`, and `webp` up to 2 MB, saves files under `backend/uploads/avatars/`, and returns a portable relative path (`uploads/avatars/...`).
 - [x] `POST /temandiabet/backend/api/profile/update.php` updates `full_name`, `diabetes_type`, `target_glucose_min`, `target_glucose_max`, and `avatar_path` for `$_SESSION['user_id']`; targets remain patient-editable because they are physician-prescribed, not app-computed.
-- [ ] `ProfilePage.tsx` allows editing profile fields, previewing/uploading an avatar, and displaying it via `${VITE_API_BASE_URL}/${user.avatar_path}`. *(code + `tsc`; page not opened in a browser, though the avatar URL itself returns `200`)*
+- [x] `ProfilePage.tsx` allows editing profile fields, previewing/uploading an avatar, and displaying it via `${VITE_API_BASE_URL}/${user.avatar_path}`. *(headless Chromium: name edited and saved, "Profile saved." shown, avatar `img` loads from `/temandiabet/backend/uploads/avatars/...` with `naturalWidth > 0`; DB row confirms the new name and path)*
 
 **Verification:**
 
@@ -250,7 +256,7 @@ Updated 2026-11-15. Tasks 0–6 are implemented, verified, and pushed to
 - [x] All lint, TypeScript, and Vite build checks pass
 - [x] Register -> Login (Session + Remember Me) -> Profile/Avatar Upload -> Logout verified end-to-end *(through `scripts/auth-smoke.sh`: 22 checks, no browser)*
 - [ ] Team review before splitting into parallel Phase 3 feature branches
-- [ ] Merged to `main` via `feature/tN-...` branches; tag `v0.2.0` created
+- [x] On `main` (sequential, no `feature/` branches); tag `v0.2.0` created
 
 ---
 
