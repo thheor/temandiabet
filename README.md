@@ -51,3 +51,11 @@ Copy `.env.example` to `.env` and pick the setup you want:
 php -l router.php
 cd frontend && npx tsc -b && npm run build
 ```
+
+API smoke tests (need `curl` and `jq`, backend running):
+
+```bash
+scripts/auth-smoke.sh
+scripts/glucose-smoke.sh
+scripts/phase3-smoke.sh   # glucose edit/delete/report, food, medication, Inner Circle, monitor
+```

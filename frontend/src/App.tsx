@@ -4,7 +4,12 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './context/AuthContext'
 import BloodGlucosePage from './pages/BloodGlucosePage'
 import DashboardPage from './pages/DashboardPage'
+import FoodLogPage from './pages/FoodLogPage'
+import GlucoseReportPage from './pages/GlucoseReportPage'
+import InnerCirclePage from './pages/InnerCirclePage'
 import LoginPage from './pages/LoginPage'
+import MedicationPage from './pages/MedicationPage'
+import MonitorPatientPage from './pages/MonitorPatientPage'
 import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 
@@ -23,6 +28,11 @@ export default function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/glucose" element={<BloodGlucosePage />} />
+              <Route path="/report" element={<GlucoseReportPage />} />
+              <Route path="/food" element={<FoodLogPage />} />
+              <Route path="/medication" element={<MedicationPage />} />
+              <Route path="/inner-circle" element={<InnerCirclePage />} />
+              <Route path="/monitor/:patientId" element={<MonitorPatientPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
