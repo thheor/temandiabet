@@ -1,26 +1,20 @@
 <?php
-declare(strict_types=1);
-
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../config/db.php';
+include_once __DIR__ . '/../config/db.php';
+include_once __DIR__ . '/response.php';
 
 const REMEMBER_COOKIE = 'remember_token';
 const REMEMBER_DAYS = 7;
 
-// Session and remember-me cookies must share the exact same path, otherwise
-// logging out leaves a live cookie behind.
-function cookie_options(): array
-{
+function cookie_options() {
     return [
-        'path' => BASE_PATH ?: '/',
+        'path' => '/',
         'httponly' => true,
         'samesite' => 'Lax',
         'secure' => !empty($_SERVER['HTTPS']),
     ];
 }
 
-function start_session(): void
-{
+function start_session() {
     if (session_status() === PHP_SESSION_ACTIVE) {
         return;
     }
@@ -29,8 +23,7 @@ function start_session(): void
     session_start();
 }
 
-function public_user(array $row): array
-{
+function public_user($row) {
     return [
         'id' => (int) $row['id'],
         'full_name' => $row['full_name'],
@@ -44,35 +37,27 @@ function public_user(array $row): array
     ];
 }
 
-function remember_token_hash(string $token): string
-{
-    return hash('sha256', $token);
-}
-
-function set_remember_cookie(string $token): void
-{
+function set_remember_cookie($token) {
     setcookie(
         REMEMBER_COOKIE,
         $token,
-        cookie_options() + ['expires' => time() + REMEMBER_DAYS * 86400],
+        cookie_options() + ['expires' => time() + REMEMBER_DAYS * 86400]
     );
 }
 
-function clear_remember_cookie(): void
-{
+function clear_remember_cookie() {
     setcookie(REMEMBER_COOKIE, '', cookie_options() + ['expires' => time() - 3600]);
 }
 
-// Session first, then the remember-me cookie for a fresh browser.
-function current_user(): ?array
-{
+function current_user() {
+    global $conn;
+
     start_session();
 
     if (!empty($_SESSION['user_id'])) {
-        $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
-        $stmt->bind_param('i', $_SESSION['user_id']);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
+        $id = (int) $_SESSION['user_id'];
+        $result = $conn->query("SELECT * FROM users WHERE id = $id");
+        $row = $result->fetch_assoc();
 
         if ($row) {
             return public_user($row);
@@ -86,11 +71,9 @@ function current_user(): ?array
         return null;
     }
 
-    $stmt = db()->prepare('SELECT * FROM users WHERE remember_token = ?');
-    $hash = remember_token_hash($token);
-    $stmt->bind_param('s', $hash);
-    $stmt->execute();
-    $row = $stmt->get_result()->fetch_assoc();
+    $hash = hash('sha256', $token);
+    $result = $conn->query("SELECT * FROM users WHERE remember_token = '$hash'");
+    $row = $result->fetch_assoc();
 
     if (!$row) {
         return null;
@@ -102,8 +85,7 @@ function current_user(): ?array
     return public_user($row);
 }
 
-function require_auth(): array
-{
+function require_auth() {
     $user = current_user();
 
     if (!$user) {

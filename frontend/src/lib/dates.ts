@@ -1,6 +1,3 @@
-// Local-time helpers. The API stores naive 'YYYY-MM-DD HH:MM:SS' strings, so
-// they are parsed as local time and "today" always comes from the browser.
-
 function pad(value: number): string {
   return String(value).padStart(2, '0')
 }
@@ -27,12 +24,6 @@ export function formatMeasuredAt(value: string): string {
   return parseMeasuredAt(value).toLocaleString()
 }
 
-// 'YYYY-MM-DDTHH:MM' for <input type="datetime-local">.
 export function toDateTimeInput(value: string): string {
   return value.replace(' ', 'T').slice(0, 16)
-}
-
-export function formatShortDate(value: string): string {
-  const date = parseMeasuredAt(value)
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }

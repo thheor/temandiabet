@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { api } from '../lib/api'
 import type { User } from '../types'
@@ -25,15 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [])
 
-  const login = useCallback(async (email: string, password: string, remember: boolean) => {
-    const body = await api.post<{ user: User }>('/api/auth/login.php', { email, password, remember })
+  async function login(email: string, password: string, remember: boolean) {
+    const body = await api.post<{ user: User }>('/api/auth/login.php', {
+      email,
+      password,
+      remember,
+    })
     setUser(body.user)
-  }, [])
+  }
 
-  const logout = useCallback(async () => {
+  async function logout() {
     await api.post('/api/auth/logout.php')
     setUser(null)
-  }, [])
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, updateUser: setUser }}>

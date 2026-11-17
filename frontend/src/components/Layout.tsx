@@ -40,7 +40,6 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen md:flex">
-      {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex print:hidden">
         <p className="mb-6 text-lg font-semibold">Teman Diabet</p>
         {nav}
@@ -57,7 +56,6 @@ export default function Layout() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar */}
         <header className="border-b border-slate-200 bg-white md:hidden print:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <span className="font-semibold">Teman Diabet</span>
@@ -89,7 +87,6 @@ export default function Layout() {
           <Outlet />
         </main>
 
-        {/* The report prints its own copy of the disclaimer. */}
         <footer className="border-t border-slate-200 bg-white px-4 py-4 text-xs text-slate-500 print:hidden">
           <p className="mx-auto max-w-5xl">{DISCLAIMER}</p>
         </footer>

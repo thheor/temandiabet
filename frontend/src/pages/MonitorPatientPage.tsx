@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AlertBanner from '../components/AlertBanner'
-import GlucoseChart from '../components/GlucoseChart'
-import { api, ApiError } from '../lib/api'
+import { api, ApiError, mediaUrl } from '../lib/api'
 import { STATUS_META, TIMING_LABELS } from '../lib/clinical'
 import { formatMeasuredAt, todayISO } from '../lib/dates'
 import type { MonitorResponse } from '../types'
 
-// Strictly read-only: this page renders data and has no form, input or
-// mutating button. The server enforces the same rule on monitor.php.
 export default function MonitorPatientPage() {
   const { patientId } = useParams()
   const [data, setData] = useState<MonitorResponse | null>(null)
@@ -75,7 +72,7 @@ export default function MonitorPatientPage() {
     )
   }
 
-  const { patient, latest, glucose, medication } = data
+  const { patient, latest, glucose, medication, food } = data
   const percent =
     medication.progress.total > 0
       ? Math.round((medication.progress.taken / medication.progress.total) * 100)
@@ -135,15 +132,6 @@ export default function MonitorPatientPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-semibold">Last 7 days</h2>
-        <GlucoseChart
-          records={glucose.records}
-          targetMin={patient.target_glucose_min}
-          targetMax={patient.target_glucose_max}
-        />
-      </section>
-
-      <section className="space-y-2">
         <h2 className="font-semibold">Today&apos;s medication checklist</h2>
         <div
           className="h-3 overflow-hidden rounded bg-slate-200"
@@ -167,6 +155,38 @@ export default function MonitorPatientPage() {
                   </p>
                 </div>
                 <span className="text-xs font-medium">{item.is_taken ? 'Taken' : 'Not yet'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold">Food log today</h2>
+        <p className="text-sm text-slate-500">
+          {food.totals.estimated_calories} kcal · {food.totals.carbohydrates_grams} g carbs
+        </p>
+        {food.meals.length === 0 ? (
+          <p className="text-sm text-slate-500">No meals logged for this day.</p>
+        ) : (
+          <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+            {food.meals.map((meal) => (
+              <li key={meal.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+                {meal.photo_path ? (
+                  <img
+                    src={mediaUrl(meal.photo_path)}
+                    alt={meal.food_name}
+                    className="h-14 w-14 shrink-0 rounded object-cover"
+                  />
+                ) : (
+                  <div className="h-14 w-14 shrink-0 rounded bg-slate-100" aria-hidden="true" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{meal.food_name}</p>
+                  <p className="text-xs capitalize text-slate-500">
+                    {meal.meal_type} · {meal.estimated_calories} kcal · {meal.carbohydrates_grams} g carbs
+                  </p>
+                </div>
               </li>
             ))}
           </ul>

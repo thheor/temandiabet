@@ -1,9 +1,8 @@
 <?php
-declare(strict_types=1);
-
-require_once __DIR__ . '/../../config/cors.php';
-require_once __DIR__ . '/../../helpers/auth.php';
-require_once __DIR__ . '/../../helpers/response.php';
+include_once __DIR__ . '/../../config/cors.php';
+include_once __DIR__ . '/../../config/db.php';
+include_once __DIR__ . '/../../helpers/auth.php';
+include_once __DIR__ . '/../../helpers/response.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     json_error('Method not allowed', 405);
@@ -11,16 +10,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 start_session();
 
-// Clear the stored token for whoever this request belongs to, session or cookie.
 if (!empty($_SESSION['user_id'])) {
-    $stmt = db()->prepare('UPDATE users SET remember_token = NULL WHERE id = ?');
-    $stmt->bind_param('i', $_SESSION['user_id']);
-    $stmt->execute();
+    $id = (int) $_SESSION['user_id'];
+    $conn->query("UPDATE users SET remember_token = NULL WHERE id = $id");
 } elseif (!empty($_COOKIE[REMEMBER_COOKIE])) {
-    $stmt = db()->prepare('UPDATE users SET remember_token = NULL WHERE remember_token = ?');
-    $hash = remember_token_hash($_COOKIE[REMEMBER_COOKIE]);
-    $stmt->bind_param('s', $hash);
-    $stmt->execute();
+    $hash = hash('sha256', $_COOKIE[REMEMBER_COOKIE]);
+    $conn->query("UPDATE users SET remember_token = NULL WHERE remember_token = '$hash'");
 }
 
 $_SESSION = [];

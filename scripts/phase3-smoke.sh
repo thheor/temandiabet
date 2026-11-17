@@ -1,12 +1,7 @@
 #!/usr/bin/env bash
-# Tasks 8-12 checks: glucose update/delete/date filter, food log with photo,
-# medication checklist, Inner Circle codes and the read-only monitor, including
-# owner isolation (a foreign id is always a 404, an unlinked patient a 403).
-# Usage: scripts/phase3-smoke.sh [http://127.0.0.1:8000/temandiabet/backend]
-# Needs: curl, jq, base64.
 set -uo pipefail
 
-BASE="${1:-http://127.0.0.1:8000/temandiabet/backend}"
+BASE="${1:-http://127.0.0.1:8000/backend}"
 JA="$(mktemp)"; JB="$(mktemp)"; JC="$(mktemp)"; BODY="$(mktemp)"; PNG="$(mktemp --suffix=.png)"; TXT="$(mktemp --suffix=.txt)"
 STAMP="$(date +%s)-$RANDOM"
 PASS=0
@@ -18,7 +13,6 @@ pass() { PASS=$((PASS + 1)); echo "ok   - $1"; }
 fail() { FAIL=$((FAIL + 1)); echo "FAIL - $1 (got '$2', want '$3')"; }
 check() { if [ "$2" = "$3" ]; then pass "$1"; else fail "$1" "$2" "$3"; fi; }
 
-# post <jar> <path> <json>   -> prints HTTP code, body in $BODY
 post() { curl -s -o "$BODY" -w '%{http_code}' -c "$1" -b "$1" -H 'Content-Type: application/json' -d "$3" "$BASE$2"; }
 get()  { curl -s -o "$BODY" -w '%{http_code}' -b "$1" "$BASE$2"; }
 j()    { jq -r "$1" "$BODY"; }
@@ -29,7 +23,6 @@ register() { # jar, label
   post "$1" /api/auth/login.php "{\"email\":\"$email\",\"password\":\"secret123\"}" >/dev/null
 }
 
-# 1x1 PNG
 echo 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' | base64 -d > "$PNG"
 echo 'not an image' > "$TXT"
 
@@ -134,7 +127,6 @@ check "B lists A as monitored" "$(j '.patients_i_monitor | length')" 1
 check "B sees the stored relationship" "$(j '.patients_i_monitor[0].relationship')" child
 LINK="$(j '.patients_i_monitor[0].id')"
 
-# A second code B tries to use for the same patient -> already linked.
 post "$JA" /api/inner-circle/generate-code.php '{}' >/dev/null; CODE2="$(j .invite.invite_code)"; PEND2="$(j .invite.id)"
 check "same pair cannot link twice (409)" "$(post "$JB" /api/inner-circle/join.php "{\"invite_code\":\"$CODE2\",\"relationship\":\"child\"}")" 409
 check "A removes the unused code" "$(post "$JA" /api/inner-circle/remove.php "{\"id\":$PEND2}")" 200
@@ -148,6 +140,9 @@ check "latest reading is the 45" "$(j .latest.glucose_mg_dl)" 45
 check "latest status hypoglycemia" "$(j .latest.status_category)" hypoglycemia
 check "7-day readings included" "$(j '.glucose.records | length')" 1
 check "medication progress included" "$(j '"\(.medication.progress.taken)/\(.medication.progress.total)"')" 1/1
+check "food log included" "$(j '.food.meals | length')" 1
+check "food calories total" "$(j .food.totals.estimated_calories)" 2
+check "food rows hide user_id" "$(j '.food.meals[0] | has("user_id")')" false
 check "no password_hash in payload" "$(grep -c password_hash "$BODY")" 0
 check "no remember_token in payload" "$(grep -c remember_token "$BODY")" 0
 check "no email in payload" "$(grep -c '@example.test' "$BODY")" 0
@@ -159,7 +154,6 @@ check "C cannot remove the A-B link (404)" "$(post "$JC" /api/inner-circle/remov
 check "B (caregiver) can leave" "$(post "$JB" /api/inner-circle/remove.php "{\"id\":$LINK}")" 200
 check "after B leaves, monitor is 403" "$(get "$JB" "/api/inner-circle/monitor.php?patient_id=$ME_A")" 403
 
-# Revocation from the patient's side.
 post "$JA" /api/inner-circle/generate-code.php '{}' >/dev/null; CODE3="$(j .invite.invite_code)"
 post "$JC" /api/inner-circle/join.php "{\"invite_code\":\"$CODE3\",\"relationship\":\"friend\"}" >/dev/null
 check "C monitors A" "$(get "$JC" "/api/inner-circle/monitor.php?patient_id=$ME_A")" 200
@@ -171,5 +165,3 @@ echo
 echo "passed: $PASS  failed: $FAIL   (users phase3-{a,b,c}-$STAMP@example.test)"
 [ "$FAIL" -eq 0 ] || exit 1
 
-# shortcut: leaves the users, their rows and the uploaded photo behind, wipe with
-# DELETE FROM users WHERE email LIKE 'phase3-%';

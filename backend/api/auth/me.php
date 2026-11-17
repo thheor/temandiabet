@@ -1,9 +1,7 @@
 <?php
-declare(strict_types=1);
-
-require_once __DIR__ . '/../../config/cors.php';
-require_once __DIR__ . '/../../helpers/auth.php';
-require_once __DIR__ . '/../../helpers/response.php';
+include_once __DIR__ . '/../../config/cors.php';
+include_once __DIR__ . '/../../helpers/auth.php';
+include_once __DIR__ . '/../../helpers/response.php';
 
 $user = current_user();
 

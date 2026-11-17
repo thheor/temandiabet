@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError, mediaUrl } from '../lib/api'
@@ -28,7 +28,7 @@ export default function InnerCirclePage() {
   const [relationship, setRelationship] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
+  async function load() {
     try {
       setData(await api.get<InnerCircleResponse>('/api/inner-circle/index.php'))
     } catch (err) {
@@ -36,11 +36,11 @@ export default function InnerCirclePage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    load()
+  }, [])
 
   async function generate() {
     setBusy(true)
@@ -114,8 +114,9 @@ export default function InnerCirclePage() {
           <p className="font-medium">Before you create a code</p>
           <p className="mt-1 text-slate-600">
             Whoever enters your code is able to view, read-only: your name and profile summary, your
-            glucose readings from the last 7 days with their status, your target range, and today&apos;s
-            medication checklist. They cannot change anything. By creating a code you consent to this
+            glucose readings from the last 7 days with their status, your target range, today&apos;s
+            medication checklist, and the meals you logged today with their calories and
+            carbohydrates. They cannot change anything. By creating a code you consent to this
             sharing, and you can remove anyone at any time.
           </p>
           <button

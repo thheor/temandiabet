@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Task 7 checks: the classification table at every boundary, validation, the
-# 7d/30d history with summary, and per-user isolation.
-# Usage: scripts/glucose-smoke.sh [http://127.0.0.1:8000/temandiabet/backend]
 set -uo pipefail
 
-BASE="${1:-http://127.0.0.1:8000/temandiabet/backend}"
+BASE="${1:-http://127.0.0.1:8000/backend}"
 JAR="$(mktemp)"; JAR2="$(mktemp)"; BODY="$(mktemp)"
 EMAIL="glucose-$(date +%s)-$RANDOM@example.test"
 EMAIL2="glucose-other-$(date +%s)-$RANDOM@example.test"
@@ -30,7 +27,6 @@ register() {
   echo "$code"
 }
 
-# value, timing, expected status
 case_check() {
   local code status
   code="$(post /api/blood-glucose/create.php \
@@ -76,7 +72,6 @@ case_check 180 random elevated
 case_check 199 random elevated
 case_check 200 random high
 
-# The index reads the stored status_category, so these counts prove persistence.
 curl -s -o "$BODY" -b "$JAR" "$BASE/api/blood-glucose/index.php?range=7d"
 check "7d returns all 20 readings" "$(jq -r '.summary.count' "$BODY")" 20
 check "persisted hypoglycemia count" "$(jq '[.records[] | select(.status_category == "hypoglycemia")] | length' "$BODY")" 2
@@ -98,5 +93,3 @@ echo
 echo "passed: $PASS  failed: $FAIL   (users $EMAIL, $EMAIL2)"
 [ "$FAIL" -eq 0 ] || exit 1
 
-# shortcut: leaves both users and their readings behind, wipe with
-# DELETE FROM users WHERE email LIKE 'glucose-%';

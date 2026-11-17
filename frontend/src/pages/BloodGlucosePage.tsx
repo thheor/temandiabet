@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import GlucoseChart from '../components/GlucoseChart'
 import GlucoseForm from '../components/GlucoseForm'
-import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
-import { STATUS_META, TIMING_LABELS } from '../lib/clinical'
+import { STATUS_META, TIMING_LABELS, TIMING_OPTIONS } from '../lib/clinical'
 import { formatMeasuredAt, toDateTimeInput } from '../lib/dates'
 import type { BloodGlucoseRecord, GlucoseResponse, MeasurementTiming } from '../types'
 
@@ -14,8 +12,6 @@ const RANGES = [
   { value: '30d', label: 'Last 30 days' },
 ] as const
 
-const TIMINGS = Object.entries(TIMING_LABELS) as [MeasurementTiming, string][]
-
 interface Draft {
   value: string
   timing: MeasurementTiming
@@ -23,7 +19,6 @@ interface Draft {
 }
 
 export default function BloodGlucosePage() {
-  const { user } = useAuth()
   const [range, setRange] = useState<'7d' | '30d'>('7d')
   const [data, setData] = useState<GlucoseResponse | null>(null)
   const [error, setError] = useState('')
@@ -32,7 +27,7 @@ export default function BloodGlucosePage() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
+  async function load() {
     setLoading(true)
     try {
       setData(await api.get<GlucoseResponse>(`/api/blood-glucose/index.php?range=${range}`))
@@ -42,11 +37,11 @@ export default function BloodGlucosePage() {
     } finally {
       setLoading(false)
     }
-  }, [range])
+  }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    load()
+  }, [range])
 
   function startEdit(record: BloodGlucoseRecord) {
     setEditingId(record.id)
@@ -153,14 +148,6 @@ export default function BloodGlucosePage() {
         </section>
       )}
 
-      {data && user && (
-        <GlucoseChart
-          records={data.records}
-          targetMin={user.target_glucose_min}
-          targetMax={user.target_glucose_max}
-        />
-      )}
-
       <section className="space-y-2">
         {loading && <p className="text-sm text-slate-500">Loading readings…</p>}
 
@@ -200,9 +187,9 @@ export default function BloodGlucosePage() {
                           }
                           className="mt-1 block rounded border border-slate-300 bg-white px-3 py-2"
                         >
-                          {TIMINGS.map(([option, label]) => (
-                            <option key={option} value={option}>
-                              {label}
+                          {TIMING_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
                             </option>
                           ))}
                         </select>

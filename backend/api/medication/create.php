@@ -1,11 +1,10 @@
 <?php
-declare(strict_types=1);
-
-require_once __DIR__ . '/../../config/cors.php';
-require_once __DIR__ . '/../../helpers/auth.php';
-require_once __DIR__ . '/../../helpers/response.php';
-require_once __DIR__ . '/../../helpers/request.php';
-require_once __DIR__ . '/../../helpers/dates.php';
+include_once __DIR__ . '/../../config/cors.php';
+include_once __DIR__ . '/../../config/db.php';
+include_once __DIR__ . '/../../helpers/auth.php';
+include_once __DIR__ . '/../../helpers/response.php';
+include_once __DIR__ . '/../../helpers/request.php';
+include_once __DIR__ . '/../../helpers/dates.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     json_error('Method not allowed', 405);
@@ -13,21 +12,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 $user = require_auth();
 $input = json_input();
-$userId = $user['id'];
+$userId = (int) $user['id'];
 
-// A reminder checklist only: `dosage` is free text copied from the doctor's
-// prescription. Nothing here suggests, checks or recalculates a dose.
-$name = trim((string) ($input['medication_name'] ?? ''));
-$dosage = trim((string) ($input['dosage'] ?? ''));
-$time = parse_time((string) ($input['scheduled_time'] ?? ''));
+$name = trim($input['medication_name'] ?? '');
+$dosage = trim($input['dosage'] ?? '');
+$time = parse_time($input['scheduled_time'] ?? null);
 $date = isset($input['scheduled_date']) && $input['scheduled_date'] !== ''
-    ? parse_date((string) $input['scheduled_date'])
+    ? parse_date($input['scheduled_date'])
     : date('Y-m-d');
 
-if (mb_strlen($name) < 1 || mb_strlen($name) > 120) {
+if ($name === '' || strlen($name) > 120) {
     json_error('Medication name must be 1-120 characters', 422);
 }
-if (mb_strlen($dosage) < 1 || mb_strlen($dosage) > 60) {
+if ($dosage === '' || strlen($dosage) > 60) {
     json_error('Enter the dosage exactly as prescribed (up to 60 characters)', 422);
 }
 if ($time === null) {
@@ -37,19 +34,23 @@ if ($date === null) {
     json_error('Use scheduled_date as YYYY-MM-DD', 422);
 }
 
-$stmt = db()->prepare(
-    'INSERT INTO medication_schedules (user_id, medication_name, dosage, scheduled_time, scheduled_date)
-     VALUES (?, ?, ?, ?, ?)',
-);
-$stmt->bind_param('issss', $userId, $name, $dosage, $time, $date);
+$nameSql = $conn->real_escape_string($name);
+$dosageSql = $conn->real_escape_string($dosage);
+$dateSql = $conn->real_escape_string($date);
 
-if (!$stmt->execute()) {
+$ok = $conn->query(
+    "INSERT INTO medication_schedules
+        (user_id, medication_name, dosage, scheduled_time, scheduled_date)
+     VALUES ($userId, '$nameSql', '$dosageSql', '$time', '$dateSql')"
+);
+
+if (!$ok) {
     json_error('Could not save the entry', 500);
 }
 
 json_ok([
     'item' => [
-        'id' => db()->insert_id,
+        'id' => $conn->insert_id,
         'user_id' => $userId,
         'medication_name' => $name,
         'dosage' => $dosage,

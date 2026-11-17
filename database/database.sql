@@ -5,7 +5,6 @@ CREATE DATABASE IF NOT EXISTS `temandiabet`
 
 USE `temandiabet`;
 
--- 1. Users table
 CREATE TABLE `users` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `full_name` VARCHAR(100) NOT NULL,
@@ -22,7 +21,6 @@ CREATE TABLE `users` (
   UNIQUE KEY `uk_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Blood glucose records table
 CREATE TABLE `blood_glucose_records` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` INT UNSIGNED NOT NULL,
@@ -39,7 +37,6 @@ CREATE TABLE `blood_glucose_records` (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Food logs table
 CREATE TABLE `food_logs` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` INT UNSIGNED NOT NULL,
@@ -57,7 +54,6 @@ CREATE TABLE `food_logs` (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Medication schedules table
 CREATE TABLE `medication_schedules` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` INT UNSIGNED NOT NULL,
@@ -74,7 +70,6 @@ CREATE TABLE `medication_schedules` (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Inner circles table (patient <-> caregiver links)
 CREATE TABLE `inner_circles` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `patient_id` INT UNSIGNED NOT NULL,

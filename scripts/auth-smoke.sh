@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# End-to-end check for Tasks 3-6: register, session, remember-me, profile
-# update with avatar, upload rejection, logout.
-# Usage: scripts/auth-smoke.sh [http://127.0.0.1:8000/temandiabet/backend]
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BASE="${1:-http://127.0.0.1:8000/temandiabet/backend}"
+BASE="${1:-http://127.0.0.1:8000/backend}"
 JAR="$(mktemp)"; JAR_REMEMBER="$(mktemp)"
 BODY="$(mktemp)"; PNG="$(mktemp)"; TXT="$(mktemp)"; BIG="$(mktemp)"
 EMAIL="smoke-$(date +%s)-$RANDOM@example.test"
@@ -90,5 +87,3 @@ echo
 echo "passed: $PASS  failed: $FAIL   (user $EMAIL)"
 [ "$FAIL" -eq 0 ] || exit 1
 
-# shortcut: leaves the smoke user and avatar in the dev database, wipe with
-# `docker compose down -v` or DELETE FROM users WHERE email LIKE 'smoke-%'.

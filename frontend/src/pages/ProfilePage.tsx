@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError, mediaUrl } from '../lib/api'
@@ -13,17 +13,22 @@ export default function ProfilePage() {
   const [min, setMin] = useState(String(user?.target_glucose_min ?? 80))
   const [max, setMax] = useState(String(user?.target_glucose_max ?? 130))
   const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
-  useEffect(
-    () => () => {
-      if (preview) URL.revokeObjectURL(preview)
-    },
-    [preview],
-  )
+  useEffect(() => {
+    if (!file) {
+      setPreview(null)
+      return
+    }
+
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   const avatarSrc = preview ?? (user?.avatar_path ? mediaUrl(user.avatar_path) : null)
 
@@ -106,7 +111,7 @@ export default function ProfilePage() {
         <fieldset className="text-sm">
           <legend className="font-medium">Target glucose band (mg/dL)</legend>
           <p className="mt-1 text-xs text-slate-500">
-            Use the range your doctor prescribed. It only draws the chart band.
+            Use the range your doctor prescribed.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <input

@@ -1,21 +1,14 @@
 <?php
-
-declare(strict_types=1);
-
-require_once __DIR__ . '/config.php';
-
-// Explicit allowlist: credentials are sent, so '*' is never used.
 const CORS_ORIGINS = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost',
-  'http://127.0.0.1:8008/*',
-  'http://localhost:8008/*',
-  // 'https://<your-production-domain>',
+  'http://127.0.0.1:8009',
+  'http://localhost:8009',
 ];
 
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-if ($origin !== '' && in_array($origin, CORS_ORIGINS, true)) {
+if (in_array($origin, CORS_ORIGINS, true)) {
   header('Access-Control-Allow-Origin: ' . $origin);
   header('Vary: Origin');
 }

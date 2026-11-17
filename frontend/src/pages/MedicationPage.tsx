@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, ApiError } from '../lib/api'
 import { todayISO } from '../lib/dates'
@@ -15,7 +15,7 @@ export default function MedicationPage() {
   const [time, setTime] = useState('08:00')
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(async () => {
+  async function load() {
     setLoading(true)
     try {
       setData(await api.get<MedicationResponse>(`/api/medication/index.php?scheduled_date=${date}`))
@@ -25,11 +25,11 @@ export default function MedicationPage() {
     } finally {
       setLoading(false)
     }
-  }, [date])
+  }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    load()
+  }, [date])
 
   async function handleAdd(event: FormEvent) {
     event.preventDefault()
@@ -53,7 +53,6 @@ export default function MedicationPage() {
     }
   }
 
-  // Optimistic: the progress bar moves immediately, then the server confirms.
   async function toggle(id: number, taken: boolean) {
     if (!data) return
 

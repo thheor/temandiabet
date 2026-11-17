@@ -1,11 +1,11 @@
 <?php
-declare(strict_types=1);
-
-require_once __DIR__ . '/../../config/cors.php';
-require_once __DIR__ . '/../../helpers/auth.php';
-require_once __DIR__ . '/../../helpers/glucose.php';
-require_once __DIR__ . '/../../helpers/response.php';
-require_once __DIR__ . '/../../helpers/request.php';
+include_once __DIR__ . '/../../config/cors.php';
+include_once __DIR__ . '/../../config/db.php';
+include_once __DIR__ . '/../../helpers/auth.php';
+include_once __DIR__ . '/../../helpers/glucose.php';
+include_once __DIR__ . '/../../helpers/response.php';
+include_once __DIR__ . '/../../helpers/request.php';
+include_once __DIR__ . '/../../helpers/dates.php';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     json_error('Method not allowed', 405);
@@ -13,44 +13,40 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
 
 $user = require_auth();
 $input = json_input();
+$userId = (int) $user['id'];
 
-$value = filter_var($input['glucose_mg_dl'] ?? null, FILTER_VALIDATE_INT);
-$timing = (string) ($input['measurement_timing'] ?? '');
+$value = (int) ($input['glucose_mg_dl'] ?? 0);
+$timing = $input['measurement_timing'] ?? '';
 
-if ($value === false || $value < 1) {
+if ($value < 1) {
     json_error('Glucose must be a whole number above 0 mg/dL', 422);
 }
 if (!in_array($timing, GLUCOSE_TIMINGS, true)) {
     json_error('Choose when the reading was taken', 422);
 }
 
-$measuredAt = (string) ($input['measured_at'] ?? '');
-$when = new DateTimeImmutable();
-if ($measuredAt !== '') {
-    $when = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $measuredAt)
-        ?: DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $measuredAt)
-        ?: null;
-    if ($when === null) {
-        json_error('Invalid measurement time', 422);
-    }
+$stamp = parse_measured_at((string) ($input['measured_at'] ?? ''), date('Y-m-d H:i:s'));
+if ($stamp === false) {
+    json_error('Invalid measurement time', 422);
 }
 
 $status = classifyGlucose($value, $timing);
-$stamp = $when->format('Y-m-d H:i:s');
-$userId = $user['id'];
+$timingSql = $conn->real_escape_string($timing);
+$statusSql = $conn->real_escape_string($status);
+$stampSql = $conn->real_escape_string($stamp);
 
-$stmt = db()->prepare(
-    'INSERT INTO blood_glucose_records (user_id, glucose_mg_dl, measurement_timing, status_category, measured_at) VALUES (?, ?, ?, ?, ?)',
+$ok = $conn->query(
+    "INSERT INTO blood_glucose_records (user_id, glucose_mg_dl, measurement_timing, status_category, measured_at)
+     VALUES ($userId, $value, '$timingSql', '$statusSql', '$stampSql')"
 );
-$stmt->bind_param('iisss', $userId, $value, $timing, $status, $stamp);
 
-if (!$stmt->execute()) {
+if (!$ok) {
     json_error('Could not save the reading', 500);
 }
 
 json_ok([
     'record' => [
-        'id' => db()->insert_id,
+        'id' => $conn->insert_id,
         'user_id' => $userId,
         'glucose_mg_dl' => $value,
         'measurement_timing' => $timing,

@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, ApiError } from '../lib/api'
-import { TIMING_LABELS } from '../lib/clinical'
+import { TIMING_OPTIONS } from '../lib/clinical'
 import type { MeasurementTiming } from '../types'
-
-const TIMINGS = Object.entries(TIMING_LABELS) as [MeasurementTiming, string][]
 
 export default function GlucoseForm({ onSaved }: { onSaved: () => void }) {
   const [value, setValue] = useState('')
@@ -59,9 +57,9 @@ export default function GlucoseForm({ onSaved }: { onSaved: () => void }) {
             <option value="" disabled>
               Select timing
             </option>
-            {TIMINGS.map(([option, label]) => (
-              <option key={option} value={option}>
-                {label}
+            {TIMING_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

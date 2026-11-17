@@ -1,31 +1,44 @@
 <?php
-declare(strict_types=1);
-
-// Strict Y-m-d parser shared by the food, medication and report endpoints.
-function parse_date(?string $value): ?string
-{
+function parse_date($value) {
     if ($value === null || $value === '') {
         return null;
     }
 
-    $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $matches)) {
+        return null;
+    }
 
-    return $date && $date->format('Y-m-d') === $value ? $value : null;
+    return checkdate((int) $matches[2], (int) $matches[3], (int) $matches[1]) ? $value : null;
 }
 
-// Strict H:i (or H:i:s) parser, normalised to H:i:s for a TIME column.
-function parse_time(?string $value): ?string
-{
+function parse_time($value) {
     if ($value === null || $value === '') {
         return null;
     }
 
-    foreach (['!H:i', '!H:i:s'] as $format) {
-        $time = DateTimeImmutable::createFromFormat($format, $value);
-        if ($time && $time->format($format === '!H:i' ? 'H:i' : 'H:i:s') === $value) {
-            return $time->format('H:i:s');
-        }
+    if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $value)) {
+        return null;
     }
 
-    return null;
+    return strlen($value) === 5 ? $value . ':00' : $value;
+}
+
+function parse_measured_at($value, $fallback) {
+    if ($value === '') {
+        return $fallback;
+    }
+
+    $normalized = str_replace('T', ' ', $value);
+    if (strlen($normalized) === 16) {
+        $normalized .= ':00';
+    }
+
+    $date = substr($normalized, 0, 10);
+    $time = substr($normalized, 11);
+
+    if (parse_date($date) === null || parse_time($time) === null) {
+        return false;
+    }
+
+    return $date . ' ' . parse_time($time);
 }

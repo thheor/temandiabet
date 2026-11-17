@@ -1,89 +1,80 @@
 <?php
-declare(strict_types=1);
 
-// Mirrors XAMPP's /temandiabet mount for `php -S localhost:8000 router.php`.
-const PREFIX = '/temandiabet';
-
-// fileinfo reports .css as text/plain, which browsers refuse, so web types are explicit.
-function static_mime(string $file): string
-{
-    return match (strtolower(pathinfo($file, PATHINFO_EXTENSION))) {
-        'html' => 'text/html; charset=utf-8',
-        'js', 'mjs' => 'text/javascript; charset=utf-8',
-        'css' => 'text/css; charset=utf-8',
-        'json', 'map' => 'application/json; charset=utf-8',
-        'svg' => 'image/svg+xml',
-        'png' => 'image/png',
-        'jpg', 'jpeg' => 'image/jpeg',
-        'webp' => 'image/webp',
-        'ico' => 'image/x-icon',
-        'woff2' => 'font/woff2',
-        default => mime_content_type($file) ?: 'application/octet-stream',
-    };
+function static_mime($file) {
+    switch (strtolower(pathinfo($file, PATHINFO_EXTENSION))) {
+        case 'html':
+            return 'text/html; charset=utf-8';
+        case 'js':
+            return 'text/javascript; charset=utf-8';
+        case 'css':
+            return 'text/css; charset=utf-8';
+        case 'svg':
+            return 'image/svg+xml';
+        case 'png':
+            return 'image/png';
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'webp':
+            return 'image/webp';
+        default:
+            return mime_content_type($file) ?: 'application/octet-stream';
+    }
 }
 
-// Router locals are prefixed so they cannot collide with variables in the
-// endpoint files this script requires.
-$routerUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+function send_file($file) {
+    header('Content-Type: ' . static_mime($file));
+    readfile($file);
+}
 
-if ($routerUri !== PREFIX && !str_starts_with($routerUri, PREFIX . '/')) {
+function not_found($body = '', $contentType = null) {
     http_response_code(404);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo 'Not found. All URLs live under ' . PREFIX . '/';
+    if ($contentType !== null) {
+        header('Content-Type: ' . $contentType);
+    }
+    if ($body !== '') {
+        echo $body;
+    }
+}
+
+$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+
+if (str_contains($path, '..')) {
+    not_found();
     return true;
 }
 
-$routerPath = substr($routerUri, strlen(PREFIX)) ?: '/';
-
-if (str_contains($routerPath, '..')) {
-    http_response_code(404);
-    return true;
-}
-
-// The built-in server would resolve the prefixed URI against the docroot and
-// miss the file, so repo files are executed or streamed from here.
-$routerFile = __DIR__ . $routerPath;
-if ($routerPath !== '/' && is_file($routerFile)) {
-    if (str_ends_with($routerFile, '.php')) {
-        require $routerFile;
+$file = __DIR__ . $path;
+if ($path !== '/' && is_file($file)) {
+    if (str_ends_with($file, '.php')) {
+        include $file;
         return true;
     }
-
-    header('Content-Type: ' . static_mime($routerFile));
-    readfile($routerFile);
+    send_file($file);
     return true;
 }
 
-if (str_starts_with($routerPath, '/backend/')) {
-    http_response_code(404);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['success' => false, 'message' => 'Not found']);
+if (str_starts_with($path, '/backend/')) {
+    not_found(json_encode(['success' => false, 'message' => 'Not found']), 'application/json; charset=utf-8');
     return true;
 }
 
-// Built SPA assets live in frontend/dist, not at the repo root.
-$routerDist = __DIR__ . '/frontend/dist' . $routerPath;
-if ($routerPath !== '/' && is_file($routerDist)) {
-    header('Content-Type: ' . static_mime($routerDist));
-    readfile($routerDist);
+$distFile = __DIR__ . '/frontend/dist' . $path;
+if ($path !== '/' && is_file($distFile)) {
+    send_file($distFile);
     return true;
 }
 
-// A missing hashed asset must 404, not fall back to index.html.
-if (str_starts_with($routerPath, '/assets/')) {
-    http_response_code(404);
+if (str_starts_with($path, '/assets/')) {
+    not_found();
     return true;
 }
 
-// SPA fallback for the built frontend.
-$routerIndex = __DIR__ . '/frontend/dist/index.html';
-if (is_file($routerIndex)) {
-    header('Content-Type: text/html; charset=utf-8');
-    readfile($routerIndex);
+$indexFile = __DIR__ . '/frontend/dist/index.html';
+if (is_file($indexFile)) {
+    send_file($indexFile);
     return true;
 }
 
-http_response_code(404);
-header('Content-Type: text/plain; charset=utf-8');
-echo 'Frontend not built. Run: cd frontend && npm run build';
+not_found('Frontend not built. Run: cd frontend && npm run build', 'text/plain; charset=utf-8');
 return true;

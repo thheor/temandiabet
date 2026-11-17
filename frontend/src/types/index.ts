@@ -69,8 +69,6 @@ export interface InnerCircle {
   accepted_at: string | null
 }
 
-// ---- API payloads ----
-
 export interface GlucoseSummary {
   count: number
   avg: number | null
@@ -142,19 +140,47 @@ export interface MonitoredPatient {
   relationship: string
 }
 
+export interface MonitorReading {
+  id: number
+  glucose_mg_dl: number
+  measurement_timing: MeasurementTiming
+  status_category: StatusCategory
+  notes: string | null
+  measured_at: string
+}
+
+export interface MonitorMedicationItem {
+  id: number
+  medication_name: string
+  dosage: string
+  scheduled_time: string
+  is_taken: 0 | 1
+}
+
+export interface MonitorFoodItem {
+  id: number
+  food_name: string
+  meal_type: MealType
+  estimated_calories: number
+  carbohydrates_grams: number
+  photo_path: string | null
+}
+
 export interface MonitorResponse {
   patient: MonitoredPatient
-  latest: Omit<BloodGlucoseRecord, 'user_id' | 'created_at'> | null
+  latest: MonitorReading | null
   glucose: {
-    records: Omit<BloodGlucoseRecord, 'user_id' | 'created_at'>[]
+    records: MonitorReading[]
     summary: GlucoseSummary
   }
   medication: {
     scheduled_date: string
-    items: Pick<
-      MedicationSchedule,
-      'id' | 'medication_name' | 'dosage' | 'scheduled_time' | 'is_taken'
-    >[]
+    items: MonitorMedicationItem[]
     progress: MedicationProgress
+  }
+  food: {
+    eaten_date: string
+    meals: MonitorFoodItem[]
+    totals: { estimated_calories: number; carbohydrates_grams: number }
   }
 }

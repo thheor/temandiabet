@@ -30,7 +30,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T
 }
 
-// Uploaded files are stored as portable relative paths (uploads/...).
 export function mediaUrl(path: string): string {
   return `${API_BASE_URL}/${path}`
 }
@@ -42,10 +41,4 @@ export const api = {
       method: 'POST',
       body: body instanceof FormData ? body : JSON.stringify(body ?? {}),
     }),
-  put: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: 'PUT',
-      body: body instanceof FormData ? body : JSON.stringify(body ?? {}),
-    }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }

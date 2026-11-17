@@ -10,12 +10,9 @@ interface AlertReading {
 
 interface Props {
   reading: AlertReading | null
-  // Set on the caregiver view so the wording is about the patient, not "you".
   patientName?: string
 }
 
-// Shown only for hypoglycemia or high. The 54 and 250 mg/dL refinements are
-// derived here from the stored value; the enum stays four values.
 export default function AlertBanner({ reading, patientName }: Props) {
   if (!reading || (reading.status_category !== 'hypoglycemia' && reading.status_category !== 'high')) {
     return null

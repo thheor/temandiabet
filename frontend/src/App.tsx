@@ -13,7 +13,6 @@ import MonitorPatientPage from './pages/MonitorPatientPage'
 import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 
-// '/temandiabet' in development, '' when served from the domain root.
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '')
 
 export default function App() {

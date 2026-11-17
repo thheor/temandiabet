@@ -1,7 +1,5 @@
 <?php
-declare(strict_types=1);
-
-require_once __DIR__ . '/response.php';
+include_once __DIR__ . '/response.php';
 
 const UPLOAD_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -11,12 +9,7 @@ const UPLOAD_MIME_EXT = [
     'image/webp' => 'webp',
 ];
 
-/**
- * Validates an $_FILES entry, stores it under backend/uploads/<folder>/ and
- * returns the portable relative path (uploads/<folder>/<hash>.<ext>).
- */
-function save_upload(array $file, string $folder): string
-{
+function save_upload($file, $folder) {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
         json_error('Upload failed', 400);
     }
@@ -25,7 +18,6 @@ function save_upload(array $file, string $folder): string
         json_error('Image must be 2 MB or smaller', 400);
     }
 
-    // Trust the file's bytes, never the client-supplied name or type.
     $ext = UPLOAD_MIME_EXT[(new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: ''] ?? null;
     if ($ext === null) {
         json_error('Only JPG, PNG or WebP images are allowed', 400);
@@ -44,8 +36,7 @@ function save_upload(array $file, string $folder): string
     return 'uploads/' . $folder . '/' . $name;
 }
 
-function delete_upload(?string $relativePath): void
-{
+function delete_upload($relativePath) {
     if ($relativePath === null || !str_starts_with($relativePath, 'uploads/') || str_contains($relativePath, '..')) {
         return;
     }

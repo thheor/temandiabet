@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { FOOD_PRESETS } from '../data/foodPresets'
 import { api, ApiError, mediaUrl } from '../lib/api'
@@ -31,7 +31,7 @@ export default function FoodLogPage() {
   const [busy, setBusy] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const load = useCallback(async () => {
+  async function load() {
     setLoading(true)
     try {
       setData(await api.get<FoodResponse>(`/api/food/index.php?eaten_date=${date}`))
@@ -41,13 +41,12 @@ export default function FoodLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [date])
+  }
 
   useEffect(() => {
-    void load()
-  }, [load])
+    load()
+  }, [date])
 
-  // Release the object URL of the previous preview.
   useEffect(() => {
     return () => {
       if (preview) URL.revokeObjectURL(preview)
