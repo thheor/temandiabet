@@ -68,3 +68,93 @@ export interface InnerCircle {
   created_at: string
   accepted_at: string | null
 }
+
+// ---- API payloads ----
+
+export interface GlucoseSummary {
+  count: number
+  avg: number | null
+  min: number | null
+  max: number | null
+}
+
+export interface GlucoseResponse {
+  range: '7d' | '30d' | 'custom'
+  records: BloodGlucoseRecord[]
+  summary: GlucoseSummary
+}
+
+export interface FoodResponse {
+  eaten_date: string
+  meals: FoodLog[]
+  totals: { estimated_calories: number; carbohydrates_grams: number }
+}
+
+export interface MedicationProgress {
+  taken: number
+  total: number
+}
+
+export interface MedicationResponse {
+  scheduled_date: string
+  items: MedicationSchedule[]
+  progress: MedicationProgress
+}
+
+export const RELATIONSHIP_OPTIONS = [
+  { value: 'parent', label: 'Parent' },
+  { value: 'child', label: 'Child' },
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'sibling', label: 'Sibling' },
+  { value: 'friend', label: 'Friend' },
+  { value: 'caregiver', label: 'Caregiver' },
+] as const
+
+export interface CircleMember {
+  id: number
+  user_id: number
+  full_name: string
+  email: string
+  avatar_path: string | null
+  relationship: string
+  accepted_at: string | null
+}
+
+export interface PendingCode {
+  id: number
+  invite_code: string
+  created_at: string
+}
+
+export interface InnerCircleResponse {
+  caregivers_of_me: CircleMember[]
+  patients_i_monitor: CircleMember[]
+  pending_codes: PendingCode[]
+}
+
+export interface MonitoredPatient {
+  id: number
+  full_name: string
+  diabetes_type: DiabetesType
+  target_glucose_min: number
+  target_glucose_max: number
+  avatar_path: string | null
+  relationship: string
+}
+
+export interface MonitorResponse {
+  patient: MonitoredPatient
+  latest: Omit<BloodGlucoseRecord, 'user_id' | 'created_at'> | null
+  glucose: {
+    records: Omit<BloodGlucoseRecord, 'user_id' | 'created_at'>[]
+    summary: GlucoseSummary
+  }
+  medication: {
+    scheduled_date: string
+    items: Pick<
+      MedicationSchedule,
+      'id' | 'medication_name' | 'dosage' | 'scheduled_time' | 'is_taken'
+    >[]
+    progress: MedicationProgress
+  }
+}

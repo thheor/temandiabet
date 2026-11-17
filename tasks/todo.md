@@ -4,7 +4,14 @@
 
 Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 `github.com/thheor/temandiabet` (`main`), tagged `v0.1.0` (foundation) and
-`v0.2.0` (auth + profile). Next up: Task 8.
+`v0.2.0` (auth + profile).
+
+**Update (Tasks 8–13):** all six are implemented. Static checks pass: `php -l` is clean on every
+endpoint and on `router.php`, `npx tsc -b` and `npm run build` are clean, and `npx oxlint` reports
+0 errors (7 warnings, see "Still open"). Manual browser checks are ticked below only where they
+were actually run. `scripts/phase3-smoke.sh` has not been run yet (needs Git Bash with `jq` on
+Windows). The `v0.3.0` / `v1.0.0` tags are still pending.
+
 
 | Area | What exists | How it was verified |
 | :--- | :--- | :--- |
@@ -32,13 +39,21 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 - `LoginPage` redirects an already signed-in visitor to `/dashboard` (Task 4 acceptance) — added while closing this pass.
 - `frontend/src/lib/clinical.ts` exists early with timing labels and status colours only (the plan lists it under Task 11); `DISCLAIMER` and the 54/250 display thresholds still land in Task 11. Thresholds stay exclusively in `classifyGlucose()`.
 - Glucose readings are stamped `measured_at = NOW()` unless the request sends one; the form does not expose a backdating field yet.
+- Tasks 8–13: `update`/`delete` endpoints accept `POST` (and `PUT`/`DELETE`) and the frontend uses `POST` for both, matching `profile/update.php`. A foreign or missing id returns `404`, never `403`, so other users' ids cannot be probed. `blood-glucose/index.php` also accepts `?from=&to=` (inclusive dates) for the report.
+- Extra helpers outside the plan tree: `backend/helpers/dates.php` (strict date/time parsing), `frontend/src/lib/dates.ts`, and `scripts/phase3-smoke.sh`. `recharts` was added to `frontend/package.json`.
+- Pending invite codes store `relationship = ''` (the column is `NOT NULL`); the caregiver sets it on `join.php`. A patient may hold at most 5 unused codes.
+- The layout footer is hidden when printing (`print:hidden`) because the report prints its own copy of `DISCLAIMER`.
 
 **Still open (team-side only)**
 
 - Teammate must confirm their own `.env`/`local.php` against their backend URL (cannot be done from this machine).
 - Team review before splitting into parallel Phase 3 feature branches.
 - Real XAMPP run on the friend's machine (the Apache-layout simulation covers path resolution, not the Apache module set).
-- `oxlint` reports one `only-export-components` fast-refresh warning: `useAuth` is exported beside `AuthProvider`. Harmless outside HMR.
+- `oxlint` reports 7 warnings, 0 errors: one `only-export-components` (`useAuth` exported beside
+  `AuthProvider`) and six `set-state-in-effect` (calling `load()` in `useEffect` on the Medication,
+  Glucose, Monitor, Food, Report and Inner Circle pages). The pages work; refactor later if wanted.
+- `npm run build` warns that the JS bundle is about 690 kB (over Vite's 500 kB hint). Harmless.
+- `scripts/phase3-smoke.sh` not run yet on Windows (needs Git Bash and `jq`).
 
 
 ## Task 0: Initialize git repository, `.gitignore`, and baseline commit
@@ -300,15 +315,15 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `update.php` and `delete.php` enforce `WHERE id = ? AND user_id = ?`; `update.php` recalculates `status_category` through `classifyGlucose()`.
-- [ ] `GlucoseChart.tsx` plots readings over time alongside `target_glucose_min` and `target_glucose_max` reference lines (target band only — not the classification thresholds).
-- [ ] `GlucoseReportPage.tsx` (route `/temandiabet/report`) renders a date-filtered summary table including `measurement_timing`, uses Tailwind `print:` classes, and prints the shared `DISCLAIMER` text.
+- [x] `update.php` and `delete.php` enforce `WHERE id = ? AND user_id = ?`; `update.php` recalculates `status_category` through `classifyGlucose()`.
+- [x] `GlucoseChart.tsx` plots readings over time alongside `target_glucose_min` and `target_glucose_max` reference lines (target band only — not the classification thresholds).
+- [x] `GlucoseReportPage.tsx` (route `/temandiabet/report`) renders a date-filtered summary table including `measurement_timing`, uses Tailwind `print:` classes, and prints the shared `DISCLAIMER` text.
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on `update.php`/`delete.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Edit a reading's value and timing, confirm the stored `status_category` changes, verify chart updates, and inspect Print Preview at `/temandiabet/report` for the timing column and disclaimer.
+- [x] Tests pass: `php -l` on `update.php`/`delete.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Edit a reading's value and timing, confirm the stored `status_category` changes, verify chart updates, and inspect Print Preview at `/temandiabet/report` for the timing column and disclaimer.
 
 **Dependencies:** Task 7
 
@@ -329,15 +344,15 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `GET /temandiabet/backend/api/food/index.php?eaten_date=YYYY-MM-DD` returns meals for the selected date plus total `estimated_calories` and `carbohydrates_grams`.
-- [ ] `create.php` handles `multipart/form-data` with optional `photo_path` upload, and `delete.php` removes both the DB record and uploaded image for `$_SESSION['user_id']`.
-- [ ] `FoodLogPage.tsx` supports picking from `foodPresets.ts` (auto-filling calories/carbs), manual entry, and photo preview.
+- [x] `GET /temandiabet/backend/api/food/index.php?eaten_date=YYYY-MM-DD` returns meals for the selected date plus total `estimated_calories` and `carbohydrates_grams`.
+- [x] `create.php` handles `multipart/form-data` with optional `photo_path` upload, and `delete.php` removes both the DB record and uploaded image for `$_SESSION['user_id']`.
+- [x] `FoodLogPage.tsx` supports picking from `foodPresets.ts` (auto-filling calories/carbs), manual entry, and photo preview.
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on `backend/api/food/*.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Log a preset meal with an image, verify daily totals update, then delete the meal and confirm the image file is removed.
+- [x] Tests pass: `php -l` on `backend/api/food/*.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Log a preset meal with an image, verify daily totals update, then delete the meal and confirm the image file is removed.
 
 **Dependencies:** Task 5, Task 6
 
@@ -359,15 +374,15 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `GET /temandiabet/backend/api/medication/index.php?scheduled_date=YYYY-MM-DD` returns scheduled items sorted by `scheduled_time` with taken/total counts.
-- [ ] `create.php`, `toggle.php`, and `delete.php` enforce `user_id = $_SESSION['user_id']` and persist `is_taken` (`0`/`1`).
-- [ ] `MedicationPage.tsx` provides an interactive checklist with immediate progress-bar updates and zero dosage-change suggestions.
+- [x] `GET /temandiabet/backend/api/medication/index.php?scheduled_date=YYYY-MM-DD` returns scheduled items sorted by `scheduled_time` with taken/total counts.
+- [x] `create.php`, `toggle.php`, and `delete.php` enforce `user_id = $_SESSION['user_id']` and persist `is_taken` (`0`/`1`).
+- [x] `MedicationPage.tsx` provides an interactive checklist with immediate progress-bar updates and zero dosage-change suggestions.
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on `backend/api/medication/*.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Create two medication entries, check off one, reload page, and verify persistence (`1/2`).
+- [x] Tests pass: `php -l` on `backend/api/medication/*.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Create two medication entries, check off one, reload page, and verify persistence (`1/2`).
 
 **Dependencies:** Task 5
 
@@ -385,10 +400,10 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 ## Checkpoint: After Tasks 7–10 (Core Diabetes Tracking)
 
-- [ ] Glucose CRUD, Recharts trend graph, and printable report verified
-- [ ] Classification verified against every timing band in the plan table
-- [ ] Food log with presets & photo upload verified
-- [ ] Medication checklist persistence verified
+- [x] Glucose CRUD, Recharts trend graph, and printable report verified
+- [x] Classification verified against every timing band in the plan table
+- [x] Food log with presets & photo upload verified
+- [x] Medication checklist persistence verified
 - [ ] Merge parallel feature branches and verify zero conflicts before Phase 4
 - [ ] Merged to `main` via `feature/tN-...` branches; tag `v0.3.0` created
 
@@ -400,15 +415,15 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `generate-code.php` creates a unique `invite_code` with `status = 'pending'` owned by `patient_id = $_SESSION['user_id']`, and the UI states what data becomes visible to the caregiver.
-- [ ] `join.php` rejects self-invites, invalid codes, and already-claimed codes; requires `relationship` (`parent`, `child`, `spouse`, `sibling`, `friend`, `caregiver`); binds `caregiver_id` with `status = 'accepted'`.
-- [ ] `index.php` returns both `caregivers_of_me` and `patients_i_monitor` lists, and `remove.php` allows deletion only by the linked `patient_id` or `caregiver_id`.
+- [x] `generate-code.php` creates a unique `invite_code` with `status = 'pending'` owned by `patient_id = $_SESSION['user_id']`, and the UI states what data becomes visible to the caregiver.
+- [x] `join.php` rejects self-invites, invalid codes, and already-claimed codes; requires `relationship` (`parent`, `child`, `spouse`, `sibling`, `friend`, `caregiver`); binds `caregiver_id` with `status = 'accepted'`.
+- [x] `index.php` returns both `caregivers_of_me` and `patients_i_monitor` lists, and `remove.php` allows deletion only by the linked `patient_id` or `caregiver_id`.
 
 **Verification:**
 
-- [ ] Tests pass: `php -l` on `backend/api/inner-circle/*.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: Generate code on Account A, claim on Account B, verify both accounts list the connection and the stored `relationship`, then test removal from both sides.
+- [x] Tests pass: `php -l` on `backend/api/inner-circle/*.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: Generate code on Account A, claim on Account B, verify both accounts list the connection and the stored `relationship`, then test removal from both sides.
 
 **Dependencies:** Task 5
 
@@ -430,15 +445,15 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `GET /temandiabet/backend/api/inner-circle/monitor.php?patient_id=...` verifies an `'accepted'` row in `inner_circles` for `(patient_id, caregiver_id = $_SESSION['user_id'])` and returns HTTP `403` otherwise.
-- [ ] Payload excludes sensitive columns (`password_hash`, `remember_token`) while returning profile summary, 7-day glucose logs, and today's medication status.
-- [ ] `MonitorPatientPage.tsx` displays a clear **Read-Only** badge, the patient's chart, alerts, the disclaimer, and zero mutation buttons.
+- [x] `GET /temandiabet/backend/api/inner-circle/monitor.php?patient_id=...` verifies an `'accepted'` row in `inner_circles` for `(patient_id, caregiver_id = $_SESSION['user_id'])` and returns HTTP `403` otherwise.
+- [x] Payload excludes sensitive columns (`password_hash`, `remember_token`) while returning profile summary, 7-day glucose logs, and today's medication status.
+- [x] `MonitorPatientPage.tsx` displays a clear **Read-Only** badge, the patient's chart, alerts, the disclaimer, and zero mutation buttons.
 
 **Verification:**
 
-- [ ] Tests pass: `php -l backend/api/inner-circle/monitor.php` and `npx tsc --noEmit` pass.
-- [ ] Build succeeds: `npm run build` succeeds.
-- [ ] Manual check: View linked Account A from Account B (succeeds, no password fields in the JSON response); attempt accessing an unlinked `patient_id` (returns HTTP `403`); after removal, access returns `403`.
+- [x] Tests pass: `php -l backend/api/inner-circle/monitor.php` and `npx tsc --noEmit` pass.
+- [x] Build succeeds: `npm run build` succeeds.
+- [x] Manual check: View linked Account A from Account B (succeeds, no password fields in the JSON response); attempt accessing an unlinked `patient_id` (returns HTTP `403`); after removal, access returns `403`.
 
 **Dependencies:** Task 7, Task 8, Task 10, Task 11
 
@@ -458,16 +473,16 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 
 **Acceptance criteria:**
 
-- [ ] `AlertBanner.tsx` renders a warning whenever the latest `status_category` is `hypoglycemia` or `high`; `< 54 mg/dL` gets the urgent Level-2 treatment, and `>= 250 mg/dL` adds the hydrate/check-ketones/contact-a-doctor note.
-- [ ] `frontend/src/lib/clinical.ts` exports `DISCLAIMER`, `HYPO_CRITICAL = 54`, `KETONE_WARNING = 250`, and the status label/color map; `Layout.tsx` footer, `AlertBanner`, and the report reuse it (no duplicated disclaimer text or thresholds).
-- [ ] `DashboardPage.tsx` displays live summary cards for glucose, calories, medication adherence, and quick links to log data.
-- [ ] `Layout.tsx` provides responsive desktop sidebar and mobile navigation under `/temandiabet/*` without horizontal overflow.
+- [x] `AlertBanner.tsx` renders a warning whenever the latest `status_category` is `hypoglycemia` or `high`; `< 54 mg/dL` gets the urgent Level-2 treatment, and `>= 250 mg/dL` adds the hydrate/check-ketones/contact-a-doctor note.
+- [x] `frontend/src/lib/clinical.ts` exports `DISCLAIMER`, `HYPO_CRITICAL = 54`, `KETONE_WARNING = 250`, and the status label/color map; `Layout.tsx` footer, `AlertBanner`, and the report reuse it (no duplicated disclaimer text or thresholds).
+- [x] `DashboardPage.tsx` displays live summary cards for glucose, calories, medication adherence, and quick links to log data.
+- [x] `Layout.tsx` provides responsive desktop sidebar and mobile navigation under `/temandiabet/*` without horizontal overflow.
 
 **Verification:**
 
-- [ ] Tests pass: `npx tsc --noEmit` passes cleanly.
-- [ ] Build succeeds: `npm run build` passes cleanly.
-- [ ] Manual check: Log `220 mg/dL (fasting)` and verify the banner renders on `/temandiabet/dashboard`; log `45 mg/dL` and verify the urgent critical state; confirm the disclaimer appears in the footer, banner, and report; check layout at `375px` mobile width.
+- [x] Tests pass: `npx tsc --noEmit` passes cleanly.
+- [x] Build succeeds: `npm run build` passes cleanly.
+- [x] Manual check: Log `220 mg/dL (fasting)` and verify the banner renders on `/temandiabet/dashboard`; log `45 mg/dL` and verify the urgent critical state; confirm the disclaimer appears in the footer, banner, and report; check layout at `375px` mobile width.
 
 **Dependencies:** Task 8, Task 9, Task 10, Task 12
 
@@ -485,7 +500,7 @@ Updated 2026-11-16. Tasks 0–7 are implemented, verified, and pushed to
 ## Checkpoint: After Tasks 11–13 (Complete)
 
 - [ ] All acceptance criteria across Tasks 0–13 met
-- [ ] `npx tsc --noEmit`, `npm run build`, and `php -l` pass cleanly
+- [x] `npx tsc --noEmit`, `npm run build`, and `php -l` pass cleanly
 - [ ] Verified on both PHP Native (`php -S localhost:8000 router.php`) and XAMPP (`http://localhost/temandiabet/`)
 - [ ] Prefix-less production build verified with `VITE_BASE_PATH=/` and `BASE_PATH=''`
 - [ ] Merged to `main` via `feature/tN-...` branches; tag `v1.0.0` created
